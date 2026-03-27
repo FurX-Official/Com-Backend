@@ -1,0 +1,20 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/furbbs
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:init.sql
+
+server:
+  port: 8080
+
+trpc:
+  server:
+    port: 8090
+    name: furbbs-backend
+  client:
+    timeout: 5000
