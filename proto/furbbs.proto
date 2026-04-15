@@ -692,6 +692,28 @@ service FurBBSService {
     
     rpc SetEssence(SetEssenceRequest) returns (SetEssenceResponse);
     rpc SetSticky(SetStickyRequest) returns (SetStickyResponse);
+    
+    rpc FollowUser(FollowUserRequest) returns (FollowUserResponse);
+    rpc GetFollowing(GetFollowListRequest) returns (GetFollowListResponse);
+    rpc GetFollowers(GetFollowListRequest) returns (GetFollowListResponse);
+    rpc GetFriendCircle(GetFriendCircleRequest) returns (GetFriendCircleResponse);
+    
+    rpc FavoriteFursona(FavoriteFursonaRequest) returns (FavoriteFursonaResponse);
+    rpc GetFavoriteFursonas(GetFavoriteFursonasRequest) returns (GetFavoriteFursonasResponse);
+    
+    rpc GetGiftList(GetGiftListRequest) returns (GetGiftListResponse);
+    rpc SendGift(SendGiftRequest) returns (SendGiftResponse);
+    rpc GetUserGifts(GetUserGiftsRequest) returns (GetUserGiftsResponse);
+    
+    rpc RateArtist(RateArtistRequest) returns (RateArtistResponse);
+    rpc GetArtistReviews(GetArtistReviewsRequest) returns (GetArtistReviewsResponse);
+    rpc ManageArtistBlacklist(ManageArtistBlacklistRequest) returns (ManageArtistBlacklistResponse);
+    
+    rpc CreateQuestionBox(CreateQuestionBoxRequest) returns (CreateQuestionBoxResponse);
+    rpc GetQuestionBoxes(GetQuestionBoxesRequest) returns (GetQuestionBoxesResponse);
+    rpc AskQuestion(AskQuestionRequest) returns (AskQuestionResponse);
+    rpc AnswerQuestion(AnswerQuestionRequest) returns (AnswerQuestionResponse);
+    rpc GetQuestions(GetQuestionsRequest) returns (GetQuestionsResponse);
 }
 
 message HealthCheckRequest {}
@@ -2972,4 +2994,295 @@ message SetStickyRequest {
 message SetStickyResponse {
     int32 code = 1;
     string message = 2;
+}
+
+message FollowUserRequest {
+    string access_token = 1;
+    string target_user_id = 2;
+    bool is_follow = 3;
+}
+
+message FollowUserResponse {
+    int32 code = 1;
+    string message = 2;
+    bool is_following = 3;
+}
+
+message GetFollowListRequest {
+    string access_token = 1;
+    string user_id = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message FollowUserInfo {
+    string user_id = 1;
+    string username = 2;
+    string avatar = 3;
+    string bio = 4;
+    bool is_mutual = 5;
+    int64 followed_at = 6;
+}
+
+message GetFollowListResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated FollowUserInfo users = 3;
+    int32 total = 4;
+}
+
+message GetFriendCircleRequest {
+    string access_token = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message GetFriendCircleResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Post posts = 3;
+    int32 total = 4;
+}
+
+message FavoriteFursonaRequest {
+    string access_token = 1;
+    int64 fursona_id = 2;
+    bool is_favorite = 3;
+}
+
+message FavoriteFursonaResponse {
+    int32 code = 1;
+    string message = 2;
+    bool is_favorited = 3;
+}
+
+message GetFavoriteFursonasRequest {
+    string access_token = 1;
+    string user_id = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetFavoriteFursonasResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Fursona fursonas = 3;
+    int32 total = 4;
+    int32 favorite_count = 5;
+}
+
+message GiftItem {
+    int32 id = 1;
+    string name = 2;
+    string icon = 3;
+    int32 price = 4;
+    string animation = 5;
+    bool is_animated = 6;
+    string rarity = 7;
+}
+
+message SendGiftRequest {
+    string access_token = 1;
+    string target_user_id = 2;
+    int32 gift_id = 3;
+    int32 quantity = 4;
+    string message = 5;
+    bool is_anonymous = 6;
+}
+
+message SendGiftResponse {
+    int32 code = 1;
+    string message = 2;
+    int32 total_cost = 3;
+    string gift_name = 4;
+}
+
+message GetGiftListRequest {
+    string access_token = 1;
+}
+
+message GetGiftListResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated GiftItem gifts = 3;
+}
+
+message GetUserGiftsRequest {
+    string access_token = 1;
+    string user_id = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message UserGiftRecord {
+    string from_user_id = 1;
+    string from_username = 2;
+    string from_avatar = 3;
+    int32 gift_id = 4;
+    string gift_name = 5;
+    int32 quantity = 6;
+    int32 total_value = 7;
+    string message = 8;
+    bool is_anonymous = 9;
+    int64 sent_at = 10;
+}
+
+message GetUserGiftsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated UserGiftRecord records = 3;
+    int32 total = 4;
+    int32 total_gifts_value = 5;
+}
+
+message RateArtistRequest {
+    string access_token = 1;
+    string artist_id = 2;
+    int32 commission_id = 3;
+    int32 rating = 4;
+    string comment = 5;
+    repeated string tags = 6;
+}
+
+message RateArtistResponse {
+    int32 code = 1;
+    string message = 2;
+    double new_average_rating = 3;
+}
+
+message ArtistReview {
+    string reviewer_id = 1;
+    string reviewer_name = 2;
+    string reviewer_avatar = 3;
+    int32 rating = 4;
+    string comment = 5;
+    repeated string tags = 6;
+    int64 created_at = 7;
+}
+
+message GetArtistReviewsRequest {
+    string artist_id = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message GetArtistReviewsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ArtistReview reviews = 3;
+    int32 total = 4;
+    double average_rating = 5;
+}
+
+message ArtistBlacklistEntry {
+    string artist_id = 1;
+    string artist_name = 2;
+    string reason = 3;
+    int64 added_at = 4;
+}
+
+message ManageArtistBlacklistRequest {
+    string access_token = 1;
+    string artist_id = 2;
+    bool add = 3;
+    string reason = 4;
+}
+
+message ManageArtistBlacklistResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ArtistBlacklistEntry blacklist = 3;
+}
+
+message CreateQuestionBoxRequest {
+    string access_token = 1;
+    bool is_public = 2;
+    bool allow_anonymous = 3;
+    string description = 4;
+}
+
+message CreateQuestionBoxResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 box_id = 3;
+}
+
+message AskQuestionRequest {
+    string access_token = 1;
+    int64 box_id = 2;
+    string content = 3;
+    bool is_anonymous = 4;
+}
+
+message AskQuestionResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 question_id = 3;
+}
+
+message AnswerQuestionRequest {
+    string access_token = 1;
+    int64 question_id = 2;
+    string answer = 3;
+    bool is_public = 4;
+}
+
+message AnswerQuestionResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message QuestionBoxItem {
+    int64 id = 1;
+    string owner_id = 2;
+    string owner_name = 3;
+    string owner_avatar = 4;
+    bool is_public = 5;
+    bool allow_anonymous = 6;
+    string description = 7;
+    int32 question_count = 8;
+    int64 created_at = 9;
+}
+
+message GetQuestionBoxesRequest {
+    string access_token = 1;
+    string user_id = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetQuestionBoxesResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated QuestionBoxItem boxes = 3;
+    int32 total = 4;
+}
+
+message Question {
+    int64 id = 1;
+    string asker_id = 2;
+    string asker_name = 3;
+    string asker_avatar = 4;
+    bool is_anonymous = 5;
+    string content = 6;
+    string answer = 7;
+    bool is_answered = 8;
+    bool is_public = 9;
+    int64 asked_at = 10;
+    int64 answered_at = 11;
+}
+
+message GetQuestionsRequest {
+    string access_token = 1;
+    int64 box_id = 2;
+    bool only_unanswered = 3;
+    int32 page = 4;
+    int32 page_size = 5;
+}
+
+message GetQuestionsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Question questions = 3;
+    int32 total = 4;
 }

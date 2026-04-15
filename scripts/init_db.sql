@@ -1363,3 +1363,117 @@ ALTER TABLE posts ADD COLUMN IF NOT EXISTS sticky_expiry BIGINT;
 
 CREATE INDEX idx_post_essence ON posts(is_essence);
 CREATE INDEX idx_post_sticky ON posts(is_sticky, sticky_weight DESC);
+
+CREATE TABLE IF NOT EXISTS user_follows (
+    follower_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    following_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (follower_id, following_id)
+);
+
+CREATE INDEX idx_follows_follower ON user_follows(follower_id);
+CREATE INDEX idx_follows_following ON user_follows(following_id);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS following_count INT DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS follower_count INT DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS fursona_favorites (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    fursona_id BIGINT REFERENCES fursonas(id) ON DELETE CASCADE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (user_id, fursona_id)
+);
+
+CREATE INDEX idx_favorite_fursona ON fursona_favorites(fursona_id);
+ALTER TABLE fursonas ADD COLUMN IF NOT EXISTS favorite_count INT DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS gift_items (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(64) NOT NULL,
+    icon VARCHAR(256),
+    price INT NOT NULL,
+    animation VARCHAR(256),
+    is_animated BOOLEAN DEFAULT FALSE,
+    rarity VARCHAR(16) DEFAULT 'common',
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+INSERT INTO gift_items (name, icon, price, animation, is_animated, rarity) VALUES
+('爱心', '❤️', 10, NULL, FALSE, 'common'),
+('玫瑰', '🌹', 20, NULL, FALSE, 'common'),
+('星星', '⭐', 30, NULL, FALSE, 'common'),
+('蛋糕', '🎂', 50, NULL, FALSE, 'uncommon'),
+('彩虹', '🌈', 88, 'rainbow_effect', TRUE, 'uncommon'),
+('皇冠', '👑', 188, 'crown_effect', TRUE, 'rare'),
+('钻石', '💎', 288, 'diamond_shine', TRUE, 'rare'),
+('神兽', '🐉', 520, 'dragon_spirit', TRUE, 'legendary'),
+('兽装抱枕', '🧸', 1314, 'hug_animation', TRUE, 'legendary');
+
+CREATE TABLE IF NOT EXISTS gift_history (
+    id SERIAL PRIMARY KEY,
+    from_user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    to_user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    gift_id INT REFERENCES gift_items(id),
+    quantity INT DEFAULT 1,
+    total_value INT NOT NULL,
+    message TEXT,
+    is_anonymous BOOLEAN DEFAULT FALSE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_gift_receiver ON gift_history(to_user_id, created_at DESC);
+CREATE INDEX idx_gift_sender ON gift_history(from_user_id);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS received_gifts_value INT DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS artist_reviews (
+    id SERIAL PRIMARY KEY,
+    reviewer_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    artist_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    commission_id BIGINT REFERENCES commissions(id),
+    rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment TEXT,
+    tags VARCHAR(32)[],
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(reviewer_id, commission_id)
+);
+
+CREATE INDEX idx_artist_reviews ON artist_reviews(artist_id, created_at DESC);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS artist_rating NUMERIC(3,2) DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS review_count INT DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS artist_blacklist (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    artist_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    reason TEXT,
+    added_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (user_id, artist_id)
+);
+
+CREATE TABLE IF NOT EXISTS question_boxes (
+    id SERIAL PRIMARY KEY,
+    owner_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    is_public BOOLEAN DEFAULT TRUE,
+    allow_anonymous BOOLEAN DEFAULT TRUE,
+    description TEXT,
+    question_count INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_question_box_owner ON question_boxes(owner_id);
+
+CREATE TABLE IF NOT EXISTS box_questions (
+    id SERIAL PRIMARY KEY,
+    box_id INT REFERENCES question_boxes(id) ON DELETE CASCADE,
+    asker_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    is_anonymous BOOLEAN DEFAULT FALSE,
+    content TEXT NOT NULL,
+    answer TEXT,
+    is_answered BOOLEAN DEFAULT FALSE,
+    is_public BOOLEAN DEFAULT TRUE,
+    asked_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    answered_at BIGINT
+);
+
+CREATE INDEX idx_question_box ON box_questions(box_id, is_answered, asked_at DESC);

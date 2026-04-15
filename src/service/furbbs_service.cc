@@ -13,6 +13,7 @@
 #include "../service_impl/redeem_service.h"
 #include "../service_impl/customization_service.h"
 #include "../service_impl/shop_service.h"
+#include "../service_impl/social_service.h"
 
 namespace furbbs::service {
 
@@ -6759,6 +6760,393 @@ static const int64_t SERVER_START_TIME = std::chrono::duration_cast<std::chrono:
 
     response->set_code(success ? 200 : 403);
     response->set_message(success ? "Success" : "Permission denied");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::FollowUser(::trpc::ServerContextPtr context,
+                                              const ::furbbs::FollowUserRequest* request,
+                                              ::furbbs::FollowUserResponse* response) {
+    bool success = service::SocialService::Instance().FollowUser(
+        request->access_token(),
+        request->target_user_id(),
+        request->is_follow()
+    );
+
+    response->set_code(success ? 200 : 400);
+    response->set_message(success ? "Success" : "Failed");
+    response->set_is_following(request->is_follow());
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetFollowing(::trpc::ServerContextPtr context,
+                                                const ::furbbs::GetFollowListRequest* request,
+                                                ::furbbs::GetFollowListResponse* response) {
+    int total = 0;
+    auto users = service::SocialService::Instance().GetFollowing(
+        request->has_user_id() ? request->user_id() : "",
+        request->page(), request->page_size(), total);
+
+    for (const auto& u : users) {
+        auto* info = response->add_users();
+        info->set_user_id(u.user_id);
+        info->set_username(u.username);
+        info->set_avatar(u.avatar);
+        info->set_bio(u.bio);
+        info->set_is_mutual(u.is_mutual);
+        info->set_followed_at(u.followed_at);
+    }
+    response->set_total(total);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetFollowers(::trpc::ServerContextPtr context,
+                                                const ::furbbs::GetFollowListRequest* request,
+                                                ::furbbs::GetFollowListResponse* response) {
+    int total = 0;
+    auto users = service::SocialService::Instance().GetFollowers(
+        request->has_user_id() ? request->user_id() : "",
+        request->page(), request->page_size(), total);
+
+    for (const auto& u : users) {
+        auto* info = response->add_users();
+        info->set_user_id(u.user_id);
+        info->set_username(u.username);
+        info->set_avatar(u.avatar);
+        info->set_bio(u.bio);
+        info->set_is_mutual(u.is_mutual);
+        info->set_followed_at(u.followed_at);
+    }
+    response->set_total(total);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetFriendCircle(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetFriendCircleRequest* request,
+                                                   ::furbbs::GetFriendCircleResponse* response) {
+    int total = 0;
+    auto posts = service::SocialService::Instance().GetFriendCircle(
+        request->access_token(),
+        request->page(), request->page_size(), total);
+
+    for (const auto& p : posts) {
+        auto* post = response->add_posts();
+        post->set_id(p.id);
+        post->set_title(p.title);
+        post->set_content(p.content);
+        post->set_author_id(p.author_id);
+        post->set_author_name(p.author_name);
+        post->set_section_id(p.section_id);
+        post->set_view_count(p.view_count);
+        post->set_like_count(p.like_count);
+        post->set_comment_count(p.comment_count);
+        post->set_created_at(p.created_at);
+        post->set_is_essence(p.is_essence);
+        post->set_is_sticky(p.is_sticky);
+    }
+    response->set_total(total);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::FavoriteFursona(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::FavoriteFursonaRequest* request,
+                                                   ::furbbs::FavoriteFursonaResponse* response) {
+    bool success = service::SocialService::Instance().FavoriteFursona(
+        request->access_token(),
+        request->fursona_id(),
+        request->is_favorite()
+    );
+
+    response->set_code(success ? 200 : 400);
+    response->set_message(success ? "Success" : "Failed");
+    response->set_is_favorited(request->is_favorite());
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetFavoriteFursonas(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::GetFavoriteFursonasRequest* request,
+                                                      ::furbbs::GetFavoriteFursonasResponse* response) {
+    int total = 0, fav_count = 0;
+    auto fursonas = service::SocialService::Instance().GetFavoriteFursonas(
+        request->user_id(),
+        request->page(), request->page_size(), total, fav_count);
+
+    for (const auto& f : fursonas) {
+        auto* fur = response->add_fursonas();
+        fur->set_id(f.id);
+        fur->set_user_id(f.user_id);
+        fur->set_name(f.name);
+        fur->set_species(f.species);
+        fur->set_gender(f.gender);
+        fur->set_description(f.description);
+        for (const auto& r : f.reference_images) {
+            fur->add_reference_images(r);
+        }
+    }
+    response->set_total(total);
+    response->set_favorite_count(fav_count);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetGiftList(::trpc::ServerContextPtr context,
+                                               const ::furbbs::GetGiftListRequest* request,
+                                               ::furbbs::GetGiftListResponse* response) {
+    auto gifts = service::SocialService::Instance().GetGiftList();
+    for (const auto& g : gifts) {
+        auto* gift = response->add_gifts();
+        gift->set_id(g.id);
+        gift->set_name(g.name);
+        gift->set_icon(g.icon);
+        gift->set_price(g.price);
+        gift->set_animation(g.animation);
+        gift->set_is_animated(g.is_animated);
+        gift->set_rarity(g.rarity);
+    }
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::SendGift(::trpc::ServerContextPtr context,
+                                            const ::furbbs::SendGiftRequest* request,
+                                            ::furbbs::SendGiftResponse* response) {
+    int32_t cost = 0;
+    std::string gift_name;
+    bool success = service::SocialService::Instance().SendGift(
+        request->access_token(),
+        request->target_user_id(),
+        request->gift_id(),
+        std::max(1, request->quantity()),
+        request->message(),
+        request->is_anonymous(),
+        cost, gift_name
+    );
+
+    response->set_code(success ? 200 : 400);
+    response->set_message(success ? "Gift sent" : "Failed or insufficient points");
+    if (success) {
+        response->set_total_cost(cost);
+        response->set_gift_name(gift_name);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserGifts(::trpc::ServerContextPtr context,
+                                                const ::furbbs::GetUserGiftsRequest* request,
+                                                ::furbbs::GetUserGiftsResponse* response) {
+    int total = 0, total_value = 0;
+    auto records = service::SocialService::Instance().GetUserGifts(
+        request->user_id(),
+        request->page(), request->page_size(), total, total_value);
+
+    for (const auto& r : records) {
+        auto* rec = response->add_records();
+        rec->set_from_user_id(r.from_user_id);
+        rec->set_from_username(r.from_username);
+        rec->set_from_avatar(r.from_avatar);
+        rec->set_gift_id(r.gift_id);
+        rec->set_gift_name(r.gift_name);
+        rec->set_quantity(r.quantity);
+        rec->set_total_value(r.total_value);
+        rec->set_message(r.message);
+        rec->set_is_anonymous(r.is_anonymous);
+        rec->set_sent_at(r.sent_at);
+    }
+    response->set_total(total);
+    response->set_total_gifts_value(total_value);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::RateArtist(::trpc::ServerContextPtr context,
+                                              const ::furbbs::RateArtistRequest* request,
+                                              ::furbbs::RateArtistResponse* response) {
+    std::vector<std::string> tags;
+    for (int i = 0; i < request->tags_size(); i++) {
+        tags.push_back(request->tags(i));
+    }
+
+    double new_rating = service::SocialService::Instance().RateArtist(
+        request->access_token(),
+        request->artist_id(),
+        request->commission_id(),
+        std::min(5, std::max(1, request->rating())),
+        request->comment(),
+        tags
+    );
+
+    response->set_code(new_rating >= 0 ? 200 : 400);
+    response->set_message(new_rating >= 0 ? "Rated" : "Failed");
+    if (new_rating >= 0) {
+        response->set_new_average_rating(new_rating);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetArtistReviews(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::GetArtistReviewsRequest* request,
+                                                    ::furbbs::GetArtistReviewsResponse* response) {
+    int total = 0;
+    double avg_rating = 0;
+    auto reviews = service::SocialService::Instance().GetArtistReviews(
+        request->artist_id(),
+        request->page(), request->page_size(), total, avg_rating);
+
+    for (const auto& r : reviews) {
+        auto* rev = response->add_reviews();
+        rev->set_reviewer_id(r.reviewer_id);
+        rev->set_reviewer_name(r.reviewer_name);
+        rev->set_reviewer_avatar(r.reviewer_avatar);
+        rev->set_rating(r.rating);
+        rev->set_comment(r.comment);
+        for (const auto& t : r.tags) {
+            rev->add_tags(t);
+        }
+        rev->set_created_at(r.created_at);
+    }
+    response->set_total(total);
+    response->set_average_rating(avg_rating);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::ManageArtistBlacklist(::trpc::ServerContextPtr context,
+                                                         const ::furbbs::ManageArtistBlacklistRequest* request,
+                                                         ::furbbs::ManageArtistBlacklistResponse* response) {
+    auto blacklist = service::SocialService::Instance().ManageArtistBlacklist(
+        request->access_token(),
+        request->artist_id(),
+        request->add(),
+        request->reason()
+    );
+
+    for (const auto& e : blacklist) {
+        auto* entry = response->add_blacklist();
+        entry->set_artist_id(e.artist_id);
+        entry->set_artist_name(e.artist_name);
+        entry->set_reason(e.reason);
+        entry->set_added_at(e.added_at);
+    }
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::CreateQuestionBox(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::CreateQuestionBoxRequest* request,
+                                                     ::furbbs::CreateQuestionBoxResponse* response) {
+    int64_t box_id = service::SocialService::Instance().CreateQuestionBox(
+        request->access_token(),
+        request->is_public(),
+        request->allow_anonymous(),
+        request->description()
+    );
+
+    response->set_code(box_id > 0 ? 200 : 400);
+    response->set_message(box_id > 0 ? "Created" : "Failed");
+    if (box_id > 0) {
+        response->set_box_id(box_id);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetQuestionBoxes(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::GetQuestionBoxesRequest* request,
+                                                    ::furbbs::GetQuestionBoxesResponse* response) {
+    int total = 0;
+    auto boxes = service::SocialService::Instance().GetQuestionBoxes(
+        request->user_id(),
+        request->page(), request->page_size(), total);
+
+    for (const auto& b : boxes) {
+        auto* box = response->add_boxes();
+        box->set_id(b.id);
+        box->set_owner_id(b.owner_id);
+        box->set_owner_name(b.owner_name);
+        box->set_owner_avatar(b.owner_avatar);
+        box->set_is_public(b.is_public);
+        box->set_allow_anonymous(b.allow_anonymous);
+        box->set_description(b.description);
+        box->set_question_count(b.question_count);
+        box->set_created_at(b.created_at);
+    }
+    response->set_total(total);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::AskQuestion(::trpc::ServerContextPtr context,
+                                               const ::furbbs::AskQuestionRequest* request,
+                                               ::furbbs::AskQuestionResponse* response) {
+    int64_t question_id = service::SocialService::Instance().AskQuestion(
+        request->access_token(),
+        request->box_id(),
+        request->content(),
+        request->is_anonymous()
+    );
+
+    response->set_code(question_id > 0 ? 200 : 400);
+    response->set_message(question_id > 0 ? "Question sent" : "Invalid content");
+    if (question_id > 0) {
+        response->set_question_id(question_id);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::AnswerQuestion(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::AnswerQuestionRequest* request,
+                                                  ::furbbs::AnswerQuestionResponse* response) {
+    bool success = service::SocialService::Instance().AnswerQuestion(
+        request->access_token(),
+        request->question_id(),
+        request->answer(),
+        request->is_public()
+    );
+
+    response->set_code(success ? 200 : 403);
+    response->set_message(success ? "Answered" : "Permission denied");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetQuestions(::trpc::ServerContextPtr context,
+                                                const ::furbbs::GetQuestionsRequest* request,
+                                                ::furbbs::GetQuestionsResponse* response) {
+    int total = 0;
+    auto questions = service::SocialService::Instance().GetQuestions(
+        request->access_token(),
+        request->box_id(),
+        request->only_unanswered(),
+        request->page(), request->page_size(), total);
+
+    for (const auto& q : questions) {
+        auto* ques = response->add_questions();
+        ques->set_id(q.id);
+        ques->set_asker_id(q.asker_id);
+        ques->set_asker_name(q.asker_name);
+        ques->set_asker_avatar(q.asker_avatar);
+        ques->set_is_anonymous(q.is_anonymous);
+        ques->set_content(q.content);
+        ques->set_answer(q.answer);
+        ques->set_is_answered(q.is_answered);
+        ques->set_is_public(q.is_public);
+        ques->set_asked_at(q.asked_at);
+        if (q.answered_at > 0) {
+            ques->set_answered_at(q.answered_at);
+        }
+    }
+    response->set_total(total);
+    response->set_code(200);
+    response->set_message("Success");
     return ::trpc::kSuccStatus;
 }
 

@@ -617,6 +617,74 @@ public:
     ::trpc::Status SetSticky(::trpc::ServerContextPtr context,
                               const ::furbbs::SetStickyRequest* request,
                               ::furbbs::SetStickyResponse* response) override;
+
+    ::trpc::Status FollowUser(::trpc::ServerContextPtr context,
+                               const ::furbbs::FollowUserRequest* request,
+                               ::furbbs::FollowUserResponse* response) override;
+
+    ::trpc::Status GetFollowing(::trpc::ServerContextPtr context,
+                                const ::furbbs::GetFollowListRequest* request,
+                                ::furbbs::GetFollowListResponse* response) override;
+
+    ::trpc::Status GetFollowers(::trpc::ServerContextPtr context,
+                                const ::furbbs::GetFollowListRequest* request,
+                                ::furbbs::GetFollowListResponse* response) override;
+
+    ::trpc::Status GetFriendCircle(::trpc::ServerContextPtr context,
+                                   const ::furbbs::GetFriendCircleRequest* request,
+                                   ::furbbs::GetFriendCircleResponse* response) override;
+
+    ::trpc::Status FavoriteFursona(::trpc::ServerContextPtr context,
+                                    const ::furbbs::FavoriteFursonaRequest* request,
+                                    ::furbbs::FavoriteFursonaResponse* response) override;
+
+    ::trpc::Status GetFavoriteFursonas(::trpc::ServerContextPtr context,
+                                       const ::furbbs::GetFavoriteFursonasRequest* request,
+                                       ::furbbs::GetFavoriteFursonasResponse* response) override;
+
+    ::trpc::Status GetGiftList(::trpc::ServerContextPtr context,
+                               const ::furbbs::GetGiftListRequest* request,
+                               ::furbbs::GetGiftListResponse* response) override;
+
+    ::trpc::Status SendGift(::trpc::ServerContextPtr context,
+                            const ::furbbs::SendGiftRequest* request,
+                            ::furbbs::SendGiftResponse* response) override;
+
+    ::trpc::Status GetUserGifts(::trpc::ServerContextPtr context,
+                                const ::furbbs::GetUserGiftsRequest* request,
+                                ::furbbs::GetUserGiftsResponse* response) override;
+
+    ::trpc::Status RateArtist(::trpc::ServerContextPtr context,
+                              const ::furbbs::RateArtistRequest* request,
+                              ::furbbs::RateArtistResponse* response) override;
+
+    ::trpc::Status GetArtistReviews(::trpc::ServerContextPtr context,
+                                    const ::furbbs::GetArtistReviewsRequest* request,
+                                    ::furbbs::GetArtistReviewsResponse* response) override;
+
+    ::trpc::Status ManageArtistBlacklist(::trpc::ServerContextPtr context,
+                                          const ::furbbs::ManageArtistBlacklistRequest* request,
+                                          ::furbbs::ManageArtistBlacklistResponse* response) override;
+
+    ::trpc::Status CreateQuestionBox(::trpc::ServerContextPtr context,
+                                     const ::furbbs::CreateQuestionBoxRequest* request,
+                                     ::furbbs::CreateQuestionBoxResponse* response) override;
+
+    ::trpc::Status GetQuestionBoxes(::trpc::ServerContextPtr context,
+                                    const ::furbbs::GetQuestionBoxesRequest* request,
+                                    ::furbbs::GetQuestionBoxesResponse* response) override;
+
+    ::trpc::Status AskQuestion(::trpc::ServerContextPtr context,
+                               const ::furbbs::AskQuestionRequest* request,
+                               ::furbbs::AskQuestionResponse* response) override;
+
+    ::trpc::Status AnswerQuestion(::trpc::ServerContextPtr context,
+                                  const ::furbbs::AnswerQuestionRequest* request,
+                                  ::furbbs::AnswerQuestionResponse* response) override;
+
+    ::trpc::Status GetQuestions(::trpc::ServerContextPtr context,
+                                const ::furbbs::GetQuestionsRequest* request,
+                                ::furbbs::GetQuestionsResponse* response) override;
 };
 
 } // namespace furbbs::service

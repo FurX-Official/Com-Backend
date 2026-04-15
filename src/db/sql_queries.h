@@ -603,6 +603,124 @@ const std::string POST_SET_STICKY = R"(
     WHERE id = $4
 )";
 
+const std::string FOLLOW_SET = R"(
+    INSERT INTO user_follows (follower_id, following_id) VALUES ($1, $2) ON CONFLICT DO NOTHING
+)";
+
+const std::string FOLLOW_DELETE = R"(
+    DELETE FROM user_follows WHERE follower_id = $1 AND following_id = $2
+)";
+
+const std::string FOLLOWING_LIST = R"(
+    SELECT f.following_id, u.username, u.avatar, u.bio,
+           EXISTS(SELECT 1 FROM user_follows 
+                  WHERE follower_id = f.following_id AND following_id = $1),
+           f.created_at
+    FROM user_follows f
+    JOIN users u ON f.following_id = u.id
+    WHERE f.follower_id = $1
+    ORDER BY f.created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string FOLLOWER_LIST = R"(
+    SELECT f.follower_id, u.username, u.avatar, u.bio,
+           EXISTS(SELECT 1 FROM user_follows 
+                  WHERE follower_id = $1 AND following_id = f.follower_id),
+           f.created_at
+    FROM user_follows f
+    JOIN users u ON f.follower_id = u.id
+    WHERE f.following_id = $1
+    ORDER BY f.created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string FRIEND_CIRCLE_POSTS = R"(
+    SELECT p.id FROM posts p
+    WHERE p.author_id IN (
+        SELECT following_id FROM user_follows WHERE follower_id = $1
+    ) OR p.author_id = $1
+    ORDER BY p.is_sticky DESC, p.sticky_weight DESC, p.created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string FURSONA_FAVORITE_ADD = R"(
+    INSERT INTO fursona_favorites (user_id, fursona_id) VALUES ($1, $2) ON CONFLICT DO NOTHING
+)";
+
+const std::string FURSONA_FAVORITE_REMOVE = R"(
+    DELETE FROM fursona_favorites WHERE user_id = $1 AND fursona_id = $2
+)";
+
+const std::string GIFT_LIST_ALL = R"(
+    SELECT id, name, icon, price, animation, is_animated, rarity
+    FROM gift_items WHERE is_active = TRUE
+    ORDER BY price ASC
+)";
+
+const std::string GIFT_SEND = R"(
+    INSERT INTO gift_history (from_user_id, to_user_id, gift_id, quantity,
+                             total_value, message, is_anonymous, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+)";
+
+const std::string GIFT_USER_HISTORY = R"(
+    SELECT gh.from_user_id, u.username, u.avatar,
+           gh.gift_id, gi.name, gh.quantity, gh.total_value,
+           gh.message, gh.is_anonymous, gh.created_at
+    FROM gift_history gh
+    JOIN gift_items gi ON gh.gift_id = gi.id
+    LEFT JOIN users u ON gh.from_user_id = u.id
+    WHERE gh.to_user_id = $1
+    ORDER BY gh.created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string ARTIST_REVIEW_ADD = R"(
+    INSERT INTO artist_reviews (reviewer_id, artist_id, commission_id, 
+                               rating, comment, tags, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ON CONFLICT (reviewer_id, commission_id) DO UPDATE SET
+    rating = $4, comment = $5, tags = $6
+)";
+
+const std::string ARTIST_REVIEW_LIST = R"(
+    SELECT ar.reviewer_id, u.username, u.avatar,
+           ar.rating, ar.comment, ar.tags, ar.created_at
+    FROM artist_reviews ar
+    JOIN users u ON ar.reviewer_id = u.id
+    WHERE ar.artist_id = $1
+    ORDER BY ar.created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string ARTIST_RATING_UPDATE = R"(
+    UPDATE users SET 
+        artist_rating = (SELECT ROUND(AVG(rating)::numeric, 2) 
+                        FROM artist_reviews WHERE artist_id = $1),
+        review_count = (SELECT COUNT(*) FROM artist_reviews WHERE artist_id = $1)
+    WHERE id = $1
+)";
+
+const std::string QUESTION_BOX_CREATE = R"(
+    INSERT INTO question_boxes (owner_id, is_public, allow_anonymous, 
+                               description, created_at)
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING id
+)";
+
+const std::string QUESTION_ASK = R"(
+    INSERT INTO box_questions (box_id, asker_id, is_anonymous, content, asked_at)
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING id
+)";
+
+const std::string QUESTION_ANSWER = R"(
+    UPDATE box_questions SET answer = $1, is_answered = TRUE, 
+           is_public = $2, answered_at = $3
+    WHERE id = $4
+)";
+
 } // namespace furbbs::db::sql
 
 #endif // FURBBS_DB_SQL_QUERIES_H
