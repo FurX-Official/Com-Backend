@@ -862,20 +862,6 @@ CREATE INDEX idx_pm_to ON private_messages(to_user_id);
 CREATE INDEX idx_pm_conversation ON private_messages(from_user_id, to_user_id);
 CREATE INDEX idx_pm_created ON private_messages(created_at DESC);
 
-CREATE TABLE IF NOT EXISTS user_verifications (
-    user_id VARCHAR(128) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    real_name VARCHAR(64) NOT NULL,
-    id_number VARCHAR(64) NOT NULL,
-    image_url VARCHAR(512),
-    status INT DEFAULT 0,
-    submitted_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
-    verified_at BIGINT,
-    verifier_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
-    reason TEXT
-);
-
-ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
-
 CREATE TABLE IF NOT EXISTS invite_codes (
     code VARCHAR(32) PRIMARY KEY,
     creator_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
@@ -939,3 +925,151 @@ CREATE TABLE IF NOT EXISTS checkin_records (
 );
 
 CREATE INDEX idx_checkin_user ON checkin_records(user_id);
+
+CREATE TABLE IF NOT EXISTS faqs (
+    id SERIAL PRIMARY KEY,
+    question VARCHAR(512) NOT NULL,
+    answer TEXT NOT NULL,
+    category VARCHAR(64) DEFAULT 'general',
+    sort_order INT DEFAULT 0,
+    view_count INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_faqs_category ON faqs(category);
+CREATE INDEX idx_faqs_active ON faqs(is_active);
+
+INSERT INTO faqs (question, answer, category, sort_order) VALUES
+('如何注册账号？', '点击首页右上角的注册按钮，按照提示填写信息即可完成注册。', '账号', 1),
+('如何找回密码？', '点击登录页面的忘记密码，通过邮箱验证即可重置密码。', '账号', 2),
+('如何发布帖子？', '登录后点击发帖按钮，选择对应版块，填写标题和内容即可发布。', '发帖', 1),
+('如何上传头像？', '进入个人设置页面，点击头像区域即可上传新头像。', '个人资料', 1),
+('积分有什么用？', '积分可用于商店兑换物品、抽奖、购买道具等。', '积分', 1);
+
+CREATE TABLE IF NOT EXISTS help_articles (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(256) NOT NULL,
+    content TEXT NOT NULL,
+    summary VARCHAR(512),
+    category VARCHAR(64) DEFAULT 'general',
+    cover_image VARCHAR(512),
+    view_count INT DEFAULT 0,
+    like_count INT DEFAULT 0,
+    is_published BOOLEAN DEFAULT TRUE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    updated_at BIGINT
+);
+
+CREATE INDEX idx_help_category ON help_articles(category);
+CREATE INDEX idx_help_published ON help_articles(is_published);
+
+INSERT INTO help_articles (title, content, summary, category) VALUES
+('新手指南', '欢迎加入我们的社区！本教程将带你了解社区的基本功能...', '快速了解社区的各项功能', '入门'),
+('论坛使用规则', '请所有用户遵守以下规则：1. 尊重他人 2. 禁止广告 3. 禁止违规内容...', '社区用户必须遵守的行为规范', '规则');
+
+CREATE TABLE IF NOT EXISTS feedbacks (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    type VARCHAR(32) NOT NULL,
+    title VARCHAR(256) NOT NULL,
+    content TEXT NOT NULL,
+    images TEXT[],
+    contact VARCHAR(128),
+    status INT DEFAULT 0,
+    admin_reply TEXT,
+    replied_at BIGINT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_feedback_user ON feedbacks(user_id);
+CREATE INDEX idx_feedback_status ON feedbacks(status);
+
+CREATE TABLE IF NOT EXISTS advertisements (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(128) NOT NULL,
+    position VARCHAR(64) NOT NULL,
+    image_url VARCHAR(512) NOT NULL,
+    link_url VARCHAR(512),
+    sort_order INT DEFAULT 0,
+    start_time BIGINT,
+    end_time BIGINT,
+    is_active BOOLEAN DEFAULT TRUE,
+    click_count INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_ad_position ON advertisements(position);
+CREATE INDEX idx_ad_active ON advertisements(is_active);
+
+INSERT INTO advertisements (name, position, image_url, link_url, sort_order) VALUES
+('首页横幅1', 'banner', 'https://example.com/banner1.jpg', 'https://example.com', 1),
+('侧边栏广告', 'sidebar', 'https://example.com/sidebar.jpg', 'https://example.com', 1);
+
+CREATE TABLE IF NOT EXISTS friend_links (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(128) NOT NULL,
+    url VARCHAR(512) NOT NULL,
+    logo VARCHAR(512),
+    description VARCHAR(512),
+    sort_order INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_fl_active ON friend_links(is_active);
+
+INSERT INTO friend_links (name, url, logo, description, sort_order) VALUES
+('Furry社区', 'https://example.com', 'https://example.com/logo.png', '友好的Furry交流社区', 1);
+
+CREATE TABLE IF NOT EXISTS captcha_settings (
+    id SERIAL PRIMARY KEY,
+    provider VARCHAR(32) NOT NULL,
+    site_key VARCHAR(256) NOT NULL,
+    secret_key VARCHAR(256) NOT NULL,
+    is_active BOOLEAN DEFAULT FALSE,
+    verify_url VARCHAR(512) NOT NULL,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE UNIQUE INDEX idx_captcha_provider ON captcha_settings(provider);
+
+INSERT INTO captcha_settings (provider, site_key, secret_key, is_active, verify_url) VALUES
+('recaptcha_v2', 'your-site-key', 'your-secret-key', false, 'https://www.google.com/recaptcha/api/siteverify'),
+('recaptcha_v3', 'your-site-key', 'your-secret-key', false, 'https://www.google.com/recaptcha/api/siteverify'),
+('hcaptcha', 'your-site-key', 'your-secret-key', false, 'https://hcaptcha.com/siteverify'),
+('geetest', 'your-id', 'your-key', false, 'https://gcaptcha4.geetest.com/validate');
+
+CREATE TABLE IF NOT EXISTS content_reports (
+    id SERIAL PRIMARY KEY,
+    reporter_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    type INT DEFAULT 0,
+    target_type VARCHAR(32) NOT NULL,
+    target_id BIGINT NOT NULL,
+    reason TEXT,
+    evidence TEXT[],
+    status INT DEFAULT 0,
+    handler_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    handler_note TEXT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    handled_at BIGINT
+);
+
+CREATE INDEX idx_report_reporter ON content_reports(reporter_id);
+CREATE INDEX idx_report_status ON content_reports(status);
+CREATE INDEX idx_report_target ON content_reports(target_type, target_id);
+
+CREATE TABLE IF NOT EXISTS moderation_actions (
+    id SERIAL PRIMARY KEY,
+    moderator_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    action_type VARCHAR(64) NOT NULL,
+    target_type VARCHAR(32) NOT NULL,
+    target_id BIGINT NOT NULL,
+    reason TEXT,
+    duration BIGINT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_mod_moderator ON moderation_actions(moderator_id);
+CREATE INDEX idx_mod_action ON moderation_actions(action_type);
+CREATE INDEX idx_mod_target ON moderation_actions(target_type, target_id);

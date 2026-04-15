@@ -623,9 +623,6 @@ service FurBBSService {
     rpc GetMessageConversations(GetMessageConversationsRequest) returns (GetMessageConversationsResponse);
     rpc MarkMessageRead(MarkMessageReadRequest) returns (MarkMessageReadResponse);
     
-    rpc SubmitVerification(SubmitVerificationRequest) returns (SubmitVerificationResponse);
-    rpc VerifyUser(VerifyUserRequest) returns (VerifyUserResponse);
-    
     rpc GenerateInviteCode(GenerateInviteCodeRequest) returns (GenerateInviteCodeResponse);
     rpc GetMyInviteCodes(GetMyInviteCodesRequest) returns (GetMyInviteCodesResponse);
     
@@ -637,6 +634,32 @@ service FurBBSService {
     
     rpc DoLuckyDraw(DoLuckyDrawRequest) returns (DoLuckyDrawResponse);
     rpc UseCheckinCard(UseCheckinCardRequest) returns (UseCheckinCardResponse);
+    
+    rpc GetFAQList(GetFAQListRequest) returns (GetFAQListResponse);
+    rpc ManageFAQ(ManageFAQRequest) returns (ManageFAQResponse);
+    
+    rpc GetHelpArticles(GetHelpArticlesRequest) returns (GetHelpArticlesResponse);
+    rpc ManageHelpArticle(ManageHelpArticleRequest) returns (ManageHelpArticleResponse);
+    
+    rpc SubmitFeedback(SubmitFeedbackRequest) returns (SubmitFeedbackResponse);
+    rpc GetFeedbackList(GetFeedbackListRequest) returns (GetFeedbackListResponse);
+    rpc ReplyFeedback(ReplyFeedbackRequest) returns (ReplyFeedbackResponse);
+    
+    rpc GetAdvertisements(GetAdvertisementsRequest) returns (GetAdvertisementsResponse);
+    rpc ManageAdvertisement(ManageAdvertisementRequest) returns (ManageAdvertisementResponse);
+    
+    rpc GetFriendLinks(GetSystemMetricsResponse) returns (GetFriendLinksResponse);
+    rpc ManageFriendLink(ManageFriendLinkRequest) returns (ManageFriendLinkResponse);
+    
+    rpc GetStatistics(GetSystemMetricsResponse) returns (GetStatisticsResponse);
+    
+    rpc VerifyCaptcha(VerifyCaptchaRequest) returns (VerifyCaptchaResponse);
+    
+    rpc SubmitReport(SubmitReportRequest) returns (SubmitReportResponse);
+    rpc GetReportList(GetReportListRequest) returns (GetReportListResponse);
+    rpc HandleReport(HandleReportRequest) returns (HandleReportResponse);
+    
+    rpc GetModerationLog(GetModerationLogRequest) returns (GetModerationLogResponse);
 }
 
 message HealthCheckRequest {}
@@ -2002,40 +2025,6 @@ message MarkMessageReadResponse {
     string message = 2;
 }
 
-message UserVerification {
-    string user_id = 1;
-    string real_name = 2;
-    string id_number = 3;
-    int32 status = 4;
-    int64 submitted_at = 5;
-    int64 verified_at = 6;
-    string verifier_id = 7;
-}
-
-message SubmitVerificationRequest {
-    string access_token = 1;
-    string real_name = 2;
-    string id_number = 3;
-    string image_url = 4;
-}
-
-message SubmitVerificationResponse {
-    int32 code = 1;
-    string message = 2;
-}
-
-message VerifyUserRequest {
-    string access_token = 1;
-    string user_id = 2;
-    bool approved = 3;
-    string reason = 4;
-}
-
-message VerifyUserResponse {
-    int32 code = 1;
-    string message = 2;
-}
-
 message InviteCode {
     string code = 1;
     string creator_id = 2;
@@ -2174,4 +2163,361 @@ message UseCheckinCardResponse {
     int32 code = 1;
     string message = 2;
     int32 new_consecutive_days = 3;
+}
+
+message FAQ {
+    int64 id = 1;
+    string question = 2;
+    string answer = 3;
+    string category = 4;
+    int32 sort_order = 5;
+    int32 view_count = 6;
+    bool is_active = 7;
+    int64 created_at = 8;
+}
+
+message GetFAQListRequest {
+    string category = 1;
+}
+
+message GetFAQListResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated FAQ faqs = 3;
+    repeated string categories = 4;
+}
+
+message ManageFAQRequest {
+    string access_token = 1;
+    int64 faq_id = 2;
+    string question = 3;
+    string answer = 4;
+    string category = 5;
+    int32 sort_order = 6;
+    bool is_active = 7;
+    string action = 8;
+}
+
+message ManageFAQResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message HelpArticle {
+    int64 id = 1;
+    string title = 2;
+    string content = 3;
+    string summary = 4;
+    string category = 5;
+    string cover_image = 6;
+    int32 view_count = 7;
+    int32 like_count = 8;
+    bool is_published = 9;
+    int64 created_at = 10;
+    int64 updated_at = 11;
+}
+
+message GetHelpArticlesRequest {
+    string category = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+    string keyword = 4;
+}
+
+message GetHelpArticlesResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated HelpArticle articles = 3;
+    int32 total = 4;
+    repeated string categories = 5;
+}
+
+message ManageHelpArticleRequest {
+    string access_token = 1;
+    int64 article_id = 2;
+    string title = 3;
+    string content = 4;
+    string summary = 5;
+    string category = 6;
+    string cover_image = 7;
+    bool is_published = 8;
+    string action = 9;
+}
+
+message ManageHelpArticleResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message Feedback {
+    int64 id = 1;
+    string user_id = 2;
+    string username = 3;
+    string type = 4;
+    string title = 5;
+    string content = 6;
+    repeated string images = 7;
+    string contact = 8;
+    int32 status = 9;
+    string admin_reply = 10;
+    int64 created_at = 11;
+    int64 replied_at = 12;
+}
+
+message SubmitFeedbackRequest {
+    string access_token = 1;
+    string type = 2;
+    string title = 3;
+    string content = 4;
+    repeated string images = 5;
+    string contact = 6;
+}
+
+message SubmitFeedbackResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GetFeedbackListRequest {
+    string access_token = 1;
+    int32 status = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetFeedbackListResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Feedback feedbacks = 3;
+    int32 total = 4;
+}
+
+message ReplyFeedbackRequest {
+    string access_token = 1;
+    int64 feedback_id = 2;
+    string reply = 3;
+    int32 status = 4;
+}
+
+message ReplyFeedbackResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message Advertisement {
+    int64 id = 1;
+    string name = 2;
+    string position = 3;
+    string image_url = 4;
+    string link_url = 5;
+    int32 sort_order = 6;
+    int64 start_time = 7;
+    int64 end_time = 8;
+    bool is_active = 9;
+    int32 click_count = 10;
+}
+
+message GetAdvertisementsRequest {
+    string position = 1;
+}
+
+message GetAdvertisementsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Advertisement ads = 3;
+}
+
+message ManageAdvertisementRequest {
+    string access_token = 1;
+    int64 ad_id = 2;
+    string name = 3;
+    string position = 4;
+    string image_url = 5;
+    string link_url = 6;
+    int32 sort_order = 7;
+    int64 start_time = 8;
+    int64 end_time = 9;
+    bool is_active = 10;
+    string action = 11;
+}
+
+message ManageAdvertisementResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message FriendLink {
+    int64 id = 1;
+    string name = 2;
+    string url = 3;
+    string logo = 4;
+    string description = 5;
+    int32 sort_order = 6;
+    bool is_active = 7;
+    int64 created_at = 8;
+}
+
+message GetFriendLinksResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated FriendLink links = 3;
+}
+
+message ManageFriendLinkRequest {
+    string access_token = 1;
+    int64 link_id = 2;
+    string name = 3;
+    string url = 4;
+    string logo = 5;
+    string description = 6;
+    int32 sort_order = 7;
+    bool is_active = 8;
+    string action = 9;
+}
+
+message ManageFriendLinkResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message StatisticsData {
+    int32 total_users = 1;
+    int32 today_users = 2;
+    int32 total_posts = 3;
+    int32 today_posts = 4;
+    int32 total_comments = 5;
+    int32 today_comments = 6;
+    int32 online_users = 7;
+    int64 uptime_seconds = 8;
+}
+
+message GetStatisticsResponse {
+    int32 code = 1;
+    string message = 2;
+    StatisticsData statistics = 3;
+    repeated int32 daily_registrations = 4;
+    repeated int32 daily_posts = 5;
+    repeated int32 daily_comments = 6;
+    repeated string date_labels = 7;
+}
+
+message VerifyCaptchaRequest {
+    string provider = 1;
+    string response_token = 2;
+    string remote_ip = 3;
+}
+
+message VerifyCaptchaResponse {
+    int32 code = 1;
+    string message = 2;
+    bool success = 3;
+    float score = 4;
+    repeated string error_codes = 5;
+}
+
+enum ReportType {
+    REPORT_TYPE_SPAM = 0;
+    REPORT_TYPE_ABUSE = 1;
+    REPORT_TYPE_PORN = 2;
+    REPORT_TYPE_VIOLENCE = 3;
+    REPORT_TYPE_HATE = 4;
+    REPORT_TYPE_COPYRIGHT = 5;
+    REPORT_TYPE_OTHER = 6;
+}
+
+enum ReportStatus {
+    REPORT_STATUS_PENDING = 0;
+    REPORT_STATUS_PROCESSING = 1;
+    REPORT_STATUS_RESOLVED = 2;
+    REPORT_STATUS_DISMISSED = 3;
+}
+
+message ContentReport {
+    int64 id = 1;
+    string reporter_id = 2;
+    string reporter_name = 3;
+    ReportType type = 4;
+    string target_type = 5;
+    int64 target_id = 6;
+    string target_title = 7;
+    string target_content = 8;
+    string target_user_id = 9;
+    string reason = 10;
+    repeated string evidence = 11;
+    ReportStatus status = 12;
+    string handler_id = 13;
+    string handler_note = 14;
+    int64 created_at = 15;
+    int64 handled_at = 16;
+}
+
+message SubmitReportRequest {
+    string access_token = 1;
+    ReportType type = 2;
+    string target_type = 3;
+    int64 target_id = 4;
+    string reason = 5;
+    repeated string evidence = 6;
+}
+
+message SubmitReportResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GetReportListRequest {
+    string access_token = 1;
+    ReportStatus status = 2;
+    string target_type = 3;
+    int32 page = 4;
+    int32 page_size = 5;
+}
+
+message GetReportListResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ContentReport reports = 3;
+    int32 total = 4;
+}
+
+message HandleReportRequest {
+    string access_token = 1;
+    int64 report_id = 2;
+    ReportStatus status = 3;
+    string note = 4;
+    bool take_down = 5;
+    bool warn_user = 6;
+    bool ban_user = 7;
+}
+
+message HandleReportResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message ModerationAction {
+    int64 id = 1;
+    string moderator_id = 2;
+    string moderator_name = 3;
+    string action_type = 4;
+    string target_type = 5;
+    int64 target_id = 6;
+    string reason = 7;
+    int64 duration = 8;
+    int64 created_at = 9;
+}
+
+message GetModerationLogRequest {
+    string access_token = 1;
+    string moderator_id = 2;
+    string action_type = 3;
+    int32 page = 4;
+    int32 page_size = 5;
+}
+
+message GetModerationLogResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ModerationAction actions = 3;
+    int32 total = 4;
 }

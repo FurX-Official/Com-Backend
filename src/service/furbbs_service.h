@@ -430,14 +430,6 @@ public:
                                    const ::furbbs::MarkMessageReadRequest* request,
                                    ::furbbs::MarkMessageReadResponse* response) override;
 
-    ::trpc::Status SubmitVerification(::trpc::ServerContextPtr context,
-                                       const ::furbbs::SubmitVerificationRequest* request,
-                                       ::furbbs::SubmitVerificationResponse* response) override;
-
-    ::trpc::Status VerifyUser(::trpc::ServerContextPtr context,
-                              const ::furbbs::VerifyUserRequest* request,
-                              ::furbbs::VerifyUserResponse* response) override;
-
     ::trpc::Status GenerateInviteCode(::trpc::ServerContextPtr context,
                                        const ::furbbs::GenerateInviteCodeRequest* request,
                                        ::furbbs::GenerateInviteCodeResponse* response) override;
@@ -469,6 +461,54 @@ public:
     ::trpc::Status UseCheckinCard(::trpc::ServerContextPtr context,
                                   const ::furbbs::UseCheckinCardRequest* request,
                                   ::furbbs::UseCheckinCardResponse* response) override;
+
+    ::trpc::Status GetFAQList(::trpc::ServerContextPtr context,
+                              const ::furbbs::GetFAQListRequest* request,
+                              ::furbbs::GetFAQListResponse* response) override;
+
+    ::trpc::Status ManageFAQ(::trpc::ServerContextPtr context,
+                            const ::furbbs::ManageFAQRequest* request,
+                            ::furbbs::ManageFAQResponse* response) override;
+
+    ::trpc::Status GetHelpArticles(::trpc::ServerContextPtr context,
+                                   const ::furbbs::GetHelpArticlesRequest* request,
+                                   ::furbbs::GetHelpArticlesResponse* response) override;
+
+    ::trpc::Status ManageHelpArticle(::trpc::ServerContextPtr context,
+                                     const ::furbbs::ManageHelpArticleRequest* request,
+                                     ::furbbs::ManageHelpArticleResponse* response) override;
+
+    ::trpc::Status SubmitFeedback(::trpc::ServerContextPtr context,
+                                  const ::furbbs::SubmitFeedbackRequest* request,
+                                  ::furbbs::SubmitFeedbackResponse* response) override;
+
+    ::trpc::Status GetFeedbackList(::trpc::ServerContextPtr context,
+                                   const ::furbbs::GetFeedbackListRequest* request,
+                                   ::furbbs::GetFeedbackListResponse* response) override;
+
+    ::trpc::Status ReplyFeedback(::trpc::ServerContextPtr context,
+                                const ::furbbs::ReplyFeedbackRequest* request,
+                                ::furbbs::ReplyFeedbackResponse* response) override;
+
+    ::trpc::Status GetAdvertisements(::trpc::ServerContextPtr context,
+                                     const ::furbbs::GetAdvertisementsRequest* request,
+                                     ::furbbs::GetAdvertisementsResponse* response) override;
+
+    ::trpc::Status ManageAdvertisement(::trpc::ServerContextPtr context,
+                                       const ::furbbs::ManageAdvertisementRequest* request,
+                                       ::furbbs::ManageAdvertisementResponse* response) override;
+
+    ::trpc::Status GetFriendLinks(::trpc::ServerContextPtr context,
+                                  const ::furbbs::GetSystemMetricsResponse* request,
+                                  ::furbbs::GetFriendLinksResponse* response) override;
+
+    ::trpc::Status ManageFriendLink(::trpc::ServerContextPtr context,
+                                    const ::furbbs::ManageFriendLinkRequest* request,
+                                    ::furbbs::ManageFriendLinkResponse* response) override;
+
+    ::trpc::Status GetStatistics(::trpc::ServerContextPtr context,
+                                 const ::furbbs::GetSystemMetricsResponse* request,
+                                 ::furbbs::GetStatisticsResponse* response) override;
 };
 
 } // namespace furbbs::service
