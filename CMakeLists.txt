@@ -37,7 +37,9 @@ include_directories(
 file(GLOB_RECURSE SRC_FILES
     "${PROJECT_SOURCE_DIR}/src/*.cc"
     "${PROJECT_SOURCE_DIR}/src/*.cpp"
-    "${PROJECT_SOURCE_DIR}/src/common/*.cc"
+    "${PROJECT_SOURCE_DIR}/src/common/security.cc"
+    "${PROJECT_SOURCE_DIR}/src/common/content_filter.cc"
+    "${PROJECT_SOURCE_DIR}/src/common/captcha_verifier.cc"
     "${PROJECT_SOURCE_DIR}/src/middleware/*.cc"
 )
 

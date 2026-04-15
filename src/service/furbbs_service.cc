@@ -7,6 +7,7 @@
 #include "../auth/casdoor_auth.h"
 #include "../common/security.h"
 #include "../common/content_filter.h"
+#include "../common/captcha_verifier.h"
 #include "../common/open_platform.h"
 #include "../common/infrastructure.h"
 
@@ -5876,6 +5877,318 @@ static const int64_t SERVER_START_TIME = std::chrono::duration_cast<std::chrono:
                 response->add_daily_comments(row[3].as<int32_t>());
                 response->add_date_labels(row[0].as<std::string>());
             }
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::VerifyCaptcha(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::VerifyCaptchaRequest* request,
+                                                 ::furbbs::VerifyCaptchaResponse* response) {
+    try {
+        auto result = furbbs::common::CaptchaVerifier::Instance().Verify(
+            request->provider(), request->response_token(), request->remote_ip());
+
+        if (result) {
+            response->set_success(result->success);
+            response->set_score(result->score);
+            for (const auto& err : result->error_codes) {
+                response->add_error_codes(err);
+            }
+            response->set_code(200);
+            response->set_message("Verification completed");
+        } else {
+            response->set_success(false);
+            response->set_code(400);
+            response->set_message("Verification failed");
+        }
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::SubmitReport(::trpc::ServerContextPtr context,
+                                                const ::furbbs::SubmitReportRequest* request,
+                                                ::furbbs::SubmitReportResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            std::vector<std::string> evidence(request->evidence().begin(), request->evidence().end());
+            std::string evidence_array = "{}";
+            if (!evidence.empty()) {
+                evidence_array = "{";
+                for (size_t i = 0; i < evidence.size(); ++i) {
+                    if (i > 0) evidence_array += ",";
+                    evidence_array += "\"" + evidence[i] + "\"";
+                }
+                evidence_array += "}";
+            }
+
+            txn.exec_params(R"(
+                INSERT INTO content_reports (reporter_id, type, target_type, target_id, reason, evidence)
+                VALUES ($1, $2, $3, $4, $5, $6)
+            )", user_opt->id, static_cast<int>(request->type()),
+                request->target_type(), static_cast<int64_t>(request->target_id()),
+                request->reason().empty() ? nullptr : request->reason(),
+                evidence.empty() ? nullptr : evidence_array);
+        });
+
+        response->set_code(200);
+        response->set_message("Report submitted successfully");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetReportList(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::GetReportListRequest* request,
+                                                 ::furbbs::GetReportListResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt || (user_opt->role != "admin" && user_opt->role != "moderator")) {
+            response->set_code(403);
+            response->set_message("Permission denied");
+            return ::trpc::kSuccStatus;
+        }
+
+        int page = std::max(1, request->page());
+        int page_size = std::min(100, std::max(1, request->page_size() > 0 ? request->page_size() : 20));
+        int offset = (page - 1) * page_size;
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            std::string sql = R"(
+                SELECT r.id, r.reporter_id, u.username, r.type, r.target_type, r.target_id,
+                       r.reason, r.evidence, r.status, r.handler_id, r.handler_note,
+                       r.created_at, r.handled_at
+                FROM content_reports r
+                LEFT JOIN users u ON r.reporter_id = u.id
+                WHERE 1=1
+            )";
+            std::vector<std::variant<int, std::string>> params;
+
+            if (request->status() >= 0) {
+                sql += " AND r.status = $" + std::to_string(params.size() + 1);
+                params.push_back(static_cast<int>(request->status()));
+            }
+            if (!request->target_type().empty()) {
+                sql += " AND r.target_type = $" + std::to_string(params.size() + 1);
+                params.push_back(request->target_type());
+            }
+            sql += " ORDER BY r.created_at DESC LIMIT $" + std::to_string(params.size() + 1) + 
+                   " OFFSET $" + std::to_string(params.size() + 2);
+
+            pqxx::prepare::invocation inv = txn.prepare(sql);
+            for (const auto& p : params) {
+                std::visit([&](auto&& arg) { inv(arg); }, p);
+            }
+            auto result = inv(page_size)(offset).exec();
+
+            for (const auto& row : result) {
+                auto* report = response->add_reports();
+                report->set_id(row[0].as<int64_t>());
+                if (!row[1].is_null()) report->set_reporter_id(row[1].as<std::string>());
+                if (!row[2].is_null()) report->set_reporter_name(row[2].as<std::string>());
+                report->set_type(static_cast<::furbbs::ReportType>(row[3].as<int>()));
+                report->set_target_type(row[4].as<std::string>());
+                report->set_target_id(row[5].as<int64_t>());
+                if (!row[6].is_null()) report->set_reason(row[6].as<std::string>());
+                report->set_status(static_cast<::furbbs::ReportStatus>(row[8].as<int>()));
+                if (!row[9].is_null()) report->set_handler_id(row[9].as<std::string>());
+                if (!row[10].is_null()) report->set_handler_note(row[10].as<std::string>());
+                report->set_created_at(row[11].as<int64_t>());
+                if (!row[12].is_null()) report->set_handled_at(row[12].as<int64_t>());
+            }
+
+            auto count_result = txn.exec("SELECT COUNT(*) FROM content_reports");
+            response->set_total(count_result[0][0].as<int32_t>());
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::HandleReport(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::HandleReportRequest* request,
+                                                 ::furbbs::HandleReportResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt || (user_opt->role != "admin" && user_opt->role != "moderator")) {
+            response->set_code(403);
+            response->set_message("Permission denied");
+            return ::trpc::kSuccStatus;
+        }
+
+        auto now = std::chrono::system_clock::now();
+        auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now.time_since_epoch()).count();
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            txn.exec_params(R"(
+                UPDATE content_reports SET status = $1, handler_id = $2, 
+                handler_note = $3, handled_at = $4
+                WHERE id = $5
+            )", static_cast<int>(request->status()), user_opt->id,
+                request->note().empty() ? nullptr : request->note(),
+                timestamp, static_cast<int>(request->report_id()));
+
+            txn.exec_params(R"(
+                INSERT INTO moderation_actions (moderator_id, action_type, target_type, 
+                                                target_id, reason)
+                VALUES ($1, $2, 'report', $3, $4)
+            )", user_opt->id, "handle_report", 
+                static_cast<int>(request->report_id()),
+                request->note().empty() ? nullptr : request->note());
+
+            if (request->take_down()) {
+                auto report_result = txn.exec_params(R"(
+                    SELECT target_type, target_id FROM content_reports WHERE id = $1
+                )", static_cast<int>(request->report_id()));
+                
+                if (!report_result.empty()) {
+                    std::string target_type = report_result[0][0].as<std::string>();
+                    int64_t target_id = report_result[0][1].as<int64_t>();
+
+                    if (target_type == "post") {
+                        txn.exec_params(R"(
+                            UPDATE posts SET is_deleted = TRUE WHERE id = $1
+                        )", static_cast<int>(target_id));
+                    } else if (target_type == "comment") {
+                        txn.exec_params(R"(
+                            UPDATE comments SET is_deleted = TRUE WHERE id = $1
+                        )", static_cast<int>(target_id));
+                    }
+                }
+            }
+
+            if (request->warn_user() || request->ban_user()) {
+                auto report_result = txn.exec_params(R"(
+                    SELECT target_type, target_id FROM content_reports WHERE id = $1
+                )", static_cast<int>(request->report_id()));
+                
+                if (!report_result.empty()) {
+                    std::string target_type = report_result[0][0].as<std::string>();
+                    int64_t target_id = report_result[0][1].as<int64_t>();
+                    std::string target_user_id;
+
+                    if (target_type == "post") {
+                        auto user_result = txn.exec_params(R"(
+                            SELECT user_id FROM posts WHERE id = $1
+                        )", static_cast<int>(target_id));
+                        if (!user_result.empty() && !user_result[0][0].is_null()) {
+                            target_user_id = user_result[0][0].as<std::string>();
+                        }
+                    } else if (target_type == "comment") {
+                        auto user_result = txn.exec_params(R"(
+                            SELECT user_id FROM comments WHERE id = $1
+                        )", static_cast<int>(target_id));
+                        if (!user_result.empty() && !user_result[0][0].is_null()) {
+                            target_user_id = user_result[0][0].as<std::string>();
+                        }
+                    }
+
+                    if (!target_user_id.empty()) {
+                        if (request->ban_user()) {
+                            txn.exec_params(R"(
+                                UPDATE users SET status = 'banned' WHERE id = $1
+                            )", target_user_id);
+                            
+                            txn.exec_params(R"(
+                                INSERT INTO user_bans (user_id, reason, banned_by, expires_at)
+                                VALUES ($1, $2, $3, 0)
+                            )", target_user_id, request->note(), user_opt->id);
+                        }
+                    }
+                }
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Report handled successfully");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetModerationLog(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::GetModerationLogRequest* request,
+                                                    ::furbbs::GetModerationLogResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt || (user_opt->role != "admin" && user_opt->role != "moderator")) {
+            response->set_code(403);
+            response->set_message("Permission denied");
+            return ::trpc::kSuccStatus;
+        }
+
+        int page = std::max(1, request->page());
+        int page_size = std::min(100, std::max(1, request->page_size() > 0 ? request->page_size() : 20));
+        int offset = (page - 1) * page_size;
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            std::string sql = R"(
+                SELECT a.id, a.moderator_id, u.username, a.action_type, 
+                       a.target_type, a.target_id, a.reason, a.duration, a.created_at
+                FROM moderation_actions a
+                LEFT JOIN users u ON a.moderator_id = u.id
+                WHERE 1=1
+            )";
+            std::vector<std::variant<int, std::string>> params;
+
+            if (!request->moderator_id().empty()) {
+                sql += " AND a.moderator_id = $" + std::to_string(params.size() + 1);
+                params.push_back(request->moderator_id());
+            }
+            if (!request->action_type().empty()) {
+                sql += " AND a.action_type = $" + std::to_string(params.size() + 1);
+                params.push_back(request->action_type());
+            }
+            sql += " ORDER BY a.created_at DESC LIMIT $" + std::to_string(params.size() + 1) + 
+                   " OFFSET $" + std::to_string(params.size() + 2);
+
+            pqxx::prepare::invocation inv = txn.prepare(sql);
+            for (const auto& p : params) {
+                std::visit([&](auto&& arg) { inv(arg); }, p);
+            }
+            auto result = inv(page_size)(offset).exec();
+
+            for (const auto& row : result) {
+                auto* action = response->add_actions();
+                action->set_id(row[0].as<int64_t>());
+                if (!row[1].is_null()) action->set_moderator_id(row[1].as<std::string>());
+                if (!row[2].is_null()) action->set_moderator_name(row[2].as<std::string>());
+                action->set_action_type(row[3].as<std::string>());
+                action->set_target_type(row[4].as<std::string>());
+                action->set_target_id(row[5].as<int64_t>());
+                if (!row[6].is_null()) action->set_reason(row[6].as<std::string>());
+                if (!row[7].is_null()) action->set_duration(row[7].as<int64_t>());
+                action->set_created_at(row[8].as<int64_t>());
+            }
+
+            auto count_result = txn.exec("SELECT COUNT(*) FROM moderation_actions");
+            response->set_total(count_result[0][0].as<int32_t>());
         });
 
         response->set_code(200);

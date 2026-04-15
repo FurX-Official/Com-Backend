@@ -509,6 +509,26 @@ public:
     ::trpc::Status GetStatistics(::trpc::ServerContextPtr context,
                                  const ::furbbs::GetSystemMetricsResponse* request,
                                  ::furbbs::GetStatisticsResponse* response) override;
+
+    ::trpc::Status VerifyCaptcha(::trpc::ServerContextPtr context,
+                                 const ::furbbs::VerifyCaptchaRequest* request,
+                                 ::furbbs::VerifyCaptchaResponse* response) override;
+
+    ::trpc::Status SubmitReport(::trpc::ServerContextPtr context,
+                                const ::furbbs::SubmitReportRequest* request,
+                                ::furbbs::SubmitReportResponse* response) override;
+
+    ::trpc::Status GetReportList(::trpc::ServerContextPtr context,
+                                 const ::furbbs::GetReportListRequest* request,
+                                 ::furbbs::GetReportListResponse* response) override;
+
+    ::trpc::Status HandleReport(::trpc::ServerContextPtr context,
+                                const ::furbbs::HandleReportRequest* request,
+                                ::furbbs::HandleReportResponse* response) override;
+
+    ::trpc::Status GetModerationLog(::trpc::ServerContextPtr context,
+                                    const ::furbbs::GetModerationLogRequest* request,
+                                    ::furbbs::GetModerationLogResponse* response) override;
 };
 
 } // namespace furbbs::service
