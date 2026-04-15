@@ -617,6 +617,26 @@ service FurBBSService {
     rpc SubscribeUser(SubscribeUserRequest) returns (SubscribeUserResponse);
     
     rpc GetDailyTasks(GetDailyTasksRequest) returns (GetDailyTasksResponse);
+    
+    rpc SendPrivateMessage(SendPrivateMessageRequest) returns (SendPrivateMessageResponse);
+    rpc GetPrivateMessages(GetPrivateMessagesRequest) returns (GetPrivateMessagesResponse);
+    rpc GetMessageConversations(GetMessageConversationsRequest) returns (GetMessageConversationsResponse);
+    rpc MarkMessageRead(MarkMessageReadRequest) returns (MarkMessageReadResponse);
+    
+    rpc SubmitVerification(SubmitVerificationRequest) returns (SubmitVerificationResponse);
+    rpc VerifyUser(VerifyUserRequest) returns (VerifyUserResponse);
+    
+    rpc GenerateInviteCode(GenerateInviteCodeRequest) returns (GenerateInviteCodeResponse);
+    rpc GetMyInviteCodes(GetMyInviteCodesRequest) returns (GetMyInviteCodesResponse);
+    
+    rpc GetModerationQueue(GetModerationQueueRequest) returns (GetModerationQueueResponse);
+    rpc ReviewPost(ReviewPostRequest) returns (ReviewPostResponse);
+    
+    rpc GetUserActivity(GetUserActivityRequest) returns (GetUserActivityResponse);
+    rpc GetActivityRanking(GetActivityRankingRequest) returns (GetActivityRankingResponse);
+    
+    rpc DoLuckyDraw(DoLuckyDrawRequest) returns (DoLuckyDrawResponse);
+    rpc UseCheckinCard(UseCheckinCardRequest) returns (UseCheckinCardResponse);
 }
 
 message HealthCheckRequest {}
@@ -1916,4 +1936,242 @@ message GetDailyTasksResponse {
     repeated DailyTask tasks = 3;
     int32 consecutive_days = 4;
     int32 max_consecutive_days = 5;
+}
+
+message PrivateMessage {
+    int64 id = 1;
+    string from_user_id = 2;
+    string to_user_id = 3;
+    string content = 4;
+    bool is_read = 5;
+    int64 created_at = 6;
+}
+
+message SendPrivateMessageRequest {
+    string access_token = 1;
+    string to_user_id = 2;
+    string content = 3;
+}
+
+message SendPrivateMessageResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GetPrivateMessagesRequest {
+    string access_token = 1;
+    string with_user_id = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetPrivateMessagesResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated PrivateMessage messages = 3;
+    int32 total = 4;
+    int32 unread_count = 5;
+}
+
+message GetMessageConversationsRequest {
+    string access_token = 1;
+}
+
+message Conversation {
+    string user_id = 1;
+    string username = 2;
+    string avatar = 3;
+    string last_message = 4;
+    int64 last_message_time = 5;
+    int32 unread_count = 6;
+}
+
+message GetMessageConversationsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Conversation conversations = 3;
+}
+
+message MarkMessageReadRequest {
+    string access_token = 1;
+    string with_user_id = 2;
+}
+
+message MarkMessageReadResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message UserVerification {
+    string user_id = 1;
+    string real_name = 2;
+    string id_number = 3;
+    int32 status = 4;
+    int64 submitted_at = 5;
+    int64 verified_at = 6;
+    string verifier_id = 7;
+}
+
+message SubmitVerificationRequest {
+    string access_token = 1;
+    string real_name = 2;
+    string id_number = 3;
+    string image_url = 4;
+}
+
+message SubmitVerificationResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message VerifyUserRequest {
+    string access_token = 1;
+    string user_id = 2;
+    bool approved = 3;
+    string reason = 4;
+}
+
+message VerifyUserResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message InviteCode {
+    string code = 1;
+    string creator_id = 2;
+    string used_by_id = 3;
+    bool is_used = 4;
+    int64 created_at = 5;
+    int64 used_at = 6;
+    int32 reward_points = 7;
+}
+
+message GenerateInviteCodeRequest {
+    string access_token = 1;
+    int32 quantity = 2;
+}
+
+message GenerateInviteCodeResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated string codes = 3;
+}
+
+message GetMyInviteCodesRequest {
+    string access_token = 1;
+}
+
+message GetMyInviteCodesResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated InviteCode codes = 3;
+}
+
+message ModerationPost {
+    int64 post_id = 1;
+    string title = 2;
+    string content = 3;
+    string author_id = 4;
+    string author_name = 5;
+    int32 status = 6;
+    int64 submitted_at = 7;
+    string risk_level = 8;
+}
+
+message GetModerationQueueRequest {
+    string access_token = 1;
+    int32 status = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetModerationQueueResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ModerationPost posts = 3;
+    int32 total = 4;
+}
+
+message ReviewPostRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    bool approved = 3;
+    string reason = 4;
+}
+
+message ReviewPostResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message UserActivity {
+    string user_id = 1;
+    int32 login_days_7d = 2;
+    int32 post_count_7d = 3;
+    int32 comment_count_7d = 4;
+    int32 like_count_7d = 5;
+    int32 activity_score = 6;
+    string level = 7;
+    int64 last_active_time = 8;
+}
+
+message GetUserActivityRequest {
+    string access_token = 1;
+    string user_id = 2;
+}
+
+message GetUserActivityResponse {
+    int32 code = 1;
+    string message = 2;
+    UserActivity activity = 3;
+}
+
+message GetActivityRankingRequest {
+    int32 days = 1;
+    int32 limit = 2;
+}
+
+message ActivityRank {
+    string user_id = 1;
+    string username = 2;
+    string avatar = 3;
+    int32 score = 4;
+}
+
+message GetActivityRankingResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ActivityRank ranks = 3;
+}
+
+message LuckyDrawReward {
+    int32 id = 1;
+    string name = 2;
+    string image = 3;
+    int32 points = 4;
+    string rarity = 5;
+    int32 probability = 6;
+}
+
+message DoLuckyDrawRequest {
+    string access_token = 1;
+    int32 times = 2;
+}
+
+message DoLuckyDrawResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated LuckyDrawReward rewards = 3;
+    int32 points_spent = 4;
+}
+
+message UseCheckinCardRequest {
+    string access_token = 1;
+    string target_date = 2;
+}
+
+message UseCheckinCardResponse {
+    int32 code = 1;
+    string message = 2;
+    int32 new_consecutive_days = 3;
 }

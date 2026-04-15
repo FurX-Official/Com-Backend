@@ -847,3 +847,95 @@ INSERT INTO daily_tasks (name, description, reward_points, target_value, task_ty
 
 INSERT INTO favorite_folders (user_id, name, is_public) VALUES
 ('default', '默认收藏夹', TRUE);
+
+CREATE TABLE IF NOT EXISTS private_messages (
+    id SERIAL PRIMARY KEY,
+    from_user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    to_user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_pm_from ON private_messages(from_user_id);
+CREATE INDEX idx_pm_to ON private_messages(to_user_id);
+CREATE INDEX idx_pm_conversation ON private_messages(from_user_id, to_user_id);
+CREATE INDEX idx_pm_created ON private_messages(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS user_verifications (
+    user_id VARCHAR(128) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    real_name VARCHAR(64) NOT NULL,
+    id_number VARCHAR(64) NOT NULL,
+    image_url VARCHAR(512),
+    status INT DEFAULT 0,
+    submitted_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    verified_at BIGINT,
+    verifier_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    reason TEXT
+);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
+
+CREATE TABLE IF NOT EXISTS invite_codes (
+    code VARCHAR(32) PRIMARY KEY,
+    creator_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    used_by_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    is_used BOOLEAN DEFAULT FALSE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    used_at BIGINT,
+    reward_points INT DEFAULT 100
+);
+
+CREATE INDEX idx_invite_creator ON invite_codes(creator_id);
+
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS moderation_status INT DEFAULT 1;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS risk_level VARCHAR(32) DEFAULT 'low';
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS reviewed_by VARCHAR(128) REFERENCES users(id);
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS reviewed_at BIGINT;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS review_reason TEXT;
+
+CREATE TABLE IF NOT EXISTS user_activity_logs (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    action_type VARCHAR(32) NOT NULL,
+    target_id BIGINT,
+    ip_address VARCHAR(64),
+    user_agent TEXT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_activity_user ON user_activity_logs(user_id);
+CREATE INDEX idx_activity_action ON user_activity_logs(action_type);
+CREATE INDEX idx_activity_created ON user_activity_logs(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS lucky_draw_rewards (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(128) NOT NULL,
+    image VARCHAR(512),
+    points INT DEFAULT 0,
+    item_id INT REFERENCES shop_items(id),
+    rarity VARCHAR(32) DEFAULT 'common',
+    probability INT DEFAULT 100,
+    is_available BOOLEAN DEFAULT TRUE
+);
+
+INSERT INTO lucky_draw_rewards (name, image, points, rarity, probability) VALUES
+('谢谢参与', '🍀', 0, 'common', 5000),
+('10积分', '✨', 10, 'common', 2500),
+('50积分', '🌟', 50, 'uncommon', 1500),
+('100积分', '💫', 100, 'rare', 700),
+('500积分', '⭐', 500, 'epic', 250),
+('1000积分', '👑', 1000, 'legendary', 50);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS lucky_draws_today INT DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_lucky_draw_date DATE;
+
+CREATE TABLE IF NOT EXISTS checkin_records (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    checkin_date DATE NOT NULL,
+    is_repaired BOOLEAN DEFAULT FALSE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (user_id, checkin_date)
+);
+
+CREATE INDEX idx_checkin_user ON checkin_records(user_id);

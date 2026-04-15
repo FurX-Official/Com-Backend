@@ -413,6 +413,62 @@ public:
     ::trpc::Status GetDailyTasks(::trpc::ServerContextPtr context,
                                    const ::furbbs::GetDailyTasksRequest* request,
                                    ::furbbs::GetDailyTasksResponse* response) override;
+
+    ::trpc::Status SendPrivateMessage(::trpc::ServerContextPtr context,
+                                      const ::furbbs::SendPrivateMessageRequest* request,
+                                      ::furbbs::SendPrivateMessageResponse* response) override;
+
+    ::trpc::Status GetPrivateMessages(::trpc::ServerContextPtr context,
+                                        const ::furbbs::GetPrivateMessagesRequest* request,
+                                        ::furbbs::GetPrivateMessagesResponse* response) override;
+
+    ::trpc::Status GetMessageConversations(::trpc::ServerContextPtr context,
+                                           const ::furbbs::GetMessageConversationsRequest* request,
+                                           ::furbbs::GetMessageConversationsResponse* response) override;
+
+    ::trpc::Status MarkMessageRead(::trpc::ServerContextPtr context,
+                                   const ::furbbs::MarkMessageReadRequest* request,
+                                   ::furbbs::MarkMessageReadResponse* response) override;
+
+    ::trpc::Status SubmitVerification(::trpc::ServerContextPtr context,
+                                       const ::furbbs::SubmitVerificationRequest* request,
+                                       ::furbbs::SubmitVerificationResponse* response) override;
+
+    ::trpc::Status VerifyUser(::trpc::ServerContextPtr context,
+                              const ::furbbs::VerifyUserRequest* request,
+                              ::furbbs::VerifyUserResponse* response) override;
+
+    ::trpc::Status GenerateInviteCode(::trpc::ServerContextPtr context,
+                                       const ::furbbs::GenerateInviteCodeRequest* request,
+                                       ::furbbs::GenerateInviteCodeResponse* response) override;
+
+    ::trpc::Status GetMyInviteCodes(::trpc::ServerContextPtr context,
+                                    const ::furbbs::GetMyInviteCodesRequest* request,
+                                    ::furbbs::GetMyInviteCodesResponse* response) override;
+
+    ::trpc::Status GetModerationQueue(::trpc::ServerContextPtr context,
+                                      const ::furbbs::GetModerationQueueRequest* request,
+                                      ::furbbs::GetModerationQueueResponse* response) override;
+
+    ::trpc::Status ReviewPost(::trpc::ServerContextPtr context,
+                              const ::furbbs::ReviewPostRequest* request,
+                              ::furbbs::ReviewPostResponse* response) override;
+
+    ::trpc::Status GetUserActivity(::trpc::ServerContextPtr context,
+                                   const ::furbbs::GetUserActivityRequest* request,
+                                   ::furbbs::GetUserActivityResponse* response) override;
+
+    ::trpc::Status GetActivityRanking(::trpc::ServerContextPtr context,
+                                      const ::furbbs::GetActivityRankingRequest* request,
+                                      ::furbbs::GetActivityRankingResponse* response) override;
+
+    ::trpc::Status DoLuckyDraw(::trpc::ServerContextPtr context,
+                               const ::furbbs::DoLuckyDrawRequest* request,
+                               ::furbbs::DoLuckyDrawResponse* response) override;
+
+    ::trpc::Status UseCheckinCard(::trpc::ServerContextPtr context,
+                                  const ::furbbs::UseCheckinCardRequest* request,
+                                  ::furbbs::UseCheckinCardResponse* response) override;
 };
 
 } // namespace furbbs::service
