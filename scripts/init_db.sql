@@ -532,3 +532,318 @@ INSERT INTO i18n_translations (lang, key, value) VALUES
 ('en', 'welcome', 'Welcome to FurBBS'),
 ('en', 'email_code_subject', 'Your verification code'),
 ('en', 'email_code_content', 'Your verification code is: {code}, valid for {minutes} minutes');
+
+CREATE TABLE IF NOT EXISTS forum_sections (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(128) NOT NULL,
+    description TEXT,
+    icon VARCHAR(512),
+    sort_order INT DEFAULT 0,
+    parent_id INT REFERENCES forum_sections(id) ON DELETE CASCADE,
+    post_count INT DEFAULT 0,
+    thread_count INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_forum_sections_parent ON forum_sections(parent_id);
+CREATE INDEX idx_forum_sections_order ON forum_sections(sort_order);
+
+CREATE TABLE IF NOT EXISTS section_moderators (
+    section_id INT REFERENCES forum_sections(id) ON DELETE CASCADE,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (section_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS tags (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(64) NOT NULL UNIQUE,
+    color VARCHAR(32) DEFAULT '#3B82F6',
+    use_count INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS post_tags (
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    tag_id INT REFERENCES tags(id) ON DELETE CASCADE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (post_id, tag_id)
+);
+
+CREATE INDEX idx_post_tags_post ON post_tags(post_id);
+CREATE INDEX idx_post_tags_tag ON post_tags(tag_id);
+
+CREATE TABLE IF NOT EXISTS badges (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(64) NOT NULL,
+    description TEXT,
+    icon VARCHAR(512),
+    rarity VARCHAR(32) DEFAULT 'common',
+    requirement_type INT DEFAULT 0,
+    requirement_value INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS user_badges (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    badge_id INT REFERENCES badges(id) ON DELETE CASCADE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (user_id, badge_id)
+);
+
+CREATE INDEX idx_user_badges_user ON user_badges(user_id);
+
+CREATE TABLE IF NOT EXISTS user_online_status (
+    user_id VARCHAR(128) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    is_online BOOLEAN DEFAULT FALSE,
+    last_active BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    status_text VARCHAR(256)
+);
+
+CREATE TABLE IF NOT EXISTS reading_history (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    read_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE UNIQUE INDEX idx_reading_history_unique ON reading_history(user_id, post_id);
+CREATE INDEX idx_reading_history_user ON reading_history(user_id);
+CREATE INDEX idx_reading_history_read_at ON reading_history(read_at DESC);
+
+CREATE TABLE IF NOT EXISTS forum_statistics (
+    id SERIAL PRIMARY KEY,
+    stat_date DATE UNIQUE,
+    new_users INT DEFAULT 0,
+    new_posts INT DEFAULT 0,
+    new_comments INT DEFAULT 0,
+    max_online_users INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS polls (
+    id SERIAL PRIMARY KEY,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    question VARCHAR(512) NOT NULL,
+    is_multiple BOOLEAN DEFAULT FALSE,
+    end_time BIGINT,
+    is_closed BOOLEAN DEFAULT FALSE,
+    total_votes INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_polls_post ON polls(post_id);
+
+CREATE TABLE IF NOT EXISTS poll_options (
+    id SERIAL PRIMARY KEY,
+    poll_id INT REFERENCES polls(id) ON DELETE CASCADE,
+    text VARCHAR(512) NOT NULL,
+    vote_count INT DEFAULT 0
+);
+
+CREATE INDEX idx_poll_options_poll ON poll_options(poll_id);
+
+CREATE TABLE IF NOT EXISTS poll_votes (
+    poll_id INT REFERENCES polls(id) ON DELETE CASCADE,
+    option_id INT REFERENCES poll_options(id) ON DELETE CASCADE,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    voted_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (poll_id, user_id, option_id)
+);
+
+CREATE INDEX idx_poll_votes_user ON poll_votes(user_id);
+
+CREATE TABLE IF NOT EXISTS gifts (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(128) NOT NULL,
+    description TEXT,
+    image VARCHAR(512),
+    price INT DEFAULT 0,
+    rarity VARCHAR(32) DEFAULT 'common',
+    is_available BOOLEAN DEFAULT TRUE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS user_gifts (
+    id SERIAL PRIMARY KEY,
+    from_user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    to_user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    post_id BIGINT REFERENCES posts(id) ON DELETE SET NULL,
+    gift_id INT REFERENCES gifts(id) ON DELETE CASCADE,
+    quantity INT DEFAULT 1,
+    message TEXT,
+    is_anonymous BOOLEAN DEFAULT FALSE,
+    sent_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_user_gifts_to ON user_gifts(to_user_id);
+CREATE INDEX idx_user_gifts_post ON user_gifts(post_id);
+
+INSERT INTO forum_sections (name, description, icon, sort_order) VALUES
+('综合讨论', '所有关于Furry文化的综合讨论', '🌍', 1),
+('兽设展示', '展示和分享你的兽设作品', '🐺', 2),
+('艺术画廊', 'Furry相关的艺术作品交流', '🎨', 3),
+('委托交易', '接稿和约稿的交易专区', '💼', 4),
+('线下兽聚', '各地兽聚活动信息发布', '🎉', 5),
+('技术交流', '编程、绘画等技术讨论', '💻', 6),
+('站务公告', '论坛公告和事务处理', '📢', 7);
+
+INSERT INTO tags (name, color, use_count) VALUES
+('兽设', '#FF6B6B', 0),
+('绘画', '#4ECDC4', 0),
+('委托', '#45B7D1', 0),
+('兽聚', '#96CEB4', 0),
+('教程', '#FFEAA7', 0),
+('求助', '#DDA0DD', 0),
+('分享', '#74B9FF', 0),
+('讨论', '#00B894', 0);
+
+INSERT INTO badges (name, description, icon, rarity, requirement_type, requirement_value) VALUES
+('新手上路', '注册并完成首次发帖', '🌟', 'common', 1, 1),
+('活跃用户', '发布100篇帖子', '⭐', 'uncommon', 1, 100),
+('论坛元老', '注册满一年', '👑', 'rare', 2, 365),
+('艺术大师', '上传50张艺术作品', '🎨', 'epic', 3, 50),
+('人气王', '获得1000个点赞', '💖', 'legendary', 4, 1000),
+('签到达人', '连续签到30天', '📅', 'rare', 5, 30),
+('乐于助人', '帮助解决100个问题', '🤝', 'uncommon', 6, 100);
+
+INSERT INTO gifts (name, description, image, price, rarity) VALUES
+('爱心', '送给TA一颗暖暖的爱心', '❤️', 10, 'common'),
+('鲜花', '美丽的鲜花献给你', '🌸', 50, 'common'),
+('鸡腿', '美味的鸡腿', '🍗', 100, 'common'),
+('皇冠', '尊贵的皇冠', '👑', 500, 'rare'),
+('钻石', '闪耀的钻石', '💎', 1000, 'epic'),
+('彩虹', '美丽的彩虹', '🌈', 2000, 'legendary');
+
+CREATE TABLE IF NOT EXISTS user_bans (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    moderator_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    reason TEXT NOT NULL,
+    type VARCHAR(32) NOT NULL,
+    expire_at BIGINT,
+    is_permanent BOOLEAN DEFAULT FALSE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_user_bans_user ON user_bans(user_id);
+CREATE INDEX idx_user_bans_expire ON user_bans(expire_at);
+
+CREATE TABLE IF NOT EXISTS moderator_logs (
+    id SERIAL PRIMARY KEY,
+    moderator_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    action VARCHAR(64) NOT NULL,
+    target_id BIGINT,
+    target_type VARCHAR(32),
+    reason TEXT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_mod_logs_moderator ON moderator_logs(moderator_id);
+CREATE INDEX idx_mod_logs_action ON moderator_logs(action);
+CREATE INDEX idx_mod_logs_created ON moderator_logs(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS shop_items (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(128) NOT NULL,
+    description TEXT,
+    image VARCHAR(512),
+    type VARCHAR(32) NOT NULL,
+    price INT DEFAULT 0,
+    stock INT DEFAULT -1,
+    is_available BOOLEAN DEFAULT TRUE,
+    properties JSONB DEFAULT '{}'::JSONB,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS user_inventory (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    item_id INT REFERENCES shop_items(id) ON DELETE CASCADE,
+    quantity INT DEFAULT 1,
+    is_used BOOLEAN DEFAULT FALSE,
+    acquired_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_inventory_user ON user_inventory(user_id);
+CREATE UNIQUE INDEX idx_inventory_unique ON user_inventory(user_id, item_id, is_used);
+
+CREATE TABLE IF NOT EXISTS avatar_frames (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(128) NOT NULL,
+    image_url VARCHAR(512) NOT NULL,
+    rarity VARCHAR(32) DEFAULT 'common',
+    price INT DEFAULT 0,
+    is_available BOOLEAN DEFAULT TRUE
+);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS signature TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS active_avatar_frame_id INT REFERENCES avatar_frames(id);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS consecutive_checkins INT DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS max_consecutive_checkins INT DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_checkin_date DATE;
+
+CREATE TABLE IF NOT EXISTS favorite_folders (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(128) NOT NULL,
+    is_public BOOLEAN DEFAULT FALSE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_favorite_folders_user ON favorite_folders(user_id);
+
+ALTER TABLE favorites ADD COLUMN IF NOT EXISTS folder_id INT REFERENCES favorite_folders(id);
+
+CREATE TABLE IF NOT EXISTS user_subscriptions (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    target_user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (user_id, target_user_id)
+);
+
+CREATE INDEX idx_subscriptions_user ON user_subscriptions(user_id);
+CREATE INDEX idx_subscriptions_target ON user_subscriptions(target_user_id);
+
+CREATE TABLE IF NOT EXISTS daily_tasks (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(128) NOT NULL,
+    description TEXT,
+    reward_points INT DEFAULT 0,
+    target_value INT DEFAULT 1,
+    task_type VARCHAR(32) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_task_progress (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    task_id INT REFERENCES daily_tasks(id) ON DELETE CASCADE,
+    progress INT DEFAULT 0,
+    is_completed BOOLEAN DEFAULT FALSE,
+    task_date DATE NOT NULL,
+    completed_at BIGINT,
+    PRIMARY KEY (user_id, task_id, task_date)
+);
+
+INSERT INTO shop_items (name, description, type, price, stock) VALUES
+('改名卡', '可以修改一次用户名', 'name_change', 500, -1),
+('头像框-金色', '尊贵的金色头像框', 'avatar_frame', 1000, -1),
+('头像框-彩虹', '绚丽的彩虹头像框', 'avatar_frame', 2000, -1),
+('置顶卡', '将帖子置顶24小时', 'pin_post', 300, -1),
+('精华卡', '将帖子设为精华', 'essence_post', 800, -1);
+
+INSERT INTO avatar_frames (name, image_url, rarity, price) VALUES
+('默认边框', 'https://example.com/frames/default.png', 'common', 0),
+('金色边框', 'https://example.com/frames/gold.png', 'rare', 1000),
+('彩虹边框', 'https://example.com/frames/rainbow.png', 'epic', 2000),
+('钻石边框', 'https://example.com/frames/diamond.png', 'legendary', 5000);
+
+INSERT INTO daily_tasks (name, description, reward_points, target_value, task_type) VALUES
+('每日签到', '每日签到获得积分', 10, 1, 'checkin'),
+('发布帖子', '发布一篇帖子', 5, 1, 'create_post'),
+('发表评论', '发表3条评论', 3, 3, 'create_comment'),
+('点赞内容', '点赞5个帖子', 2, 5, 'like_post'),
+('访问论坛', '访问论坛', 1, 1, 'visit');
+
+INSERT INTO favorite_folders (user_id, name, is_public) VALUES
+('default', '默认收藏夹', TRUE);

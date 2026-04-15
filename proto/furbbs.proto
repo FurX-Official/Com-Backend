@@ -574,6 +574,49 @@ service FurBBSService {
     
     rpc GetCacheStats(GetSystemMetricsResponse) returns (GetCacheStatsResponse);
     rpc GetSystemMetrics(GetSystemMetricsResponse) returns (GetSystemMetricsResponse);
+    
+    rpc GetForumSections(GetForumSectionsRequest) returns (GetForumSectionsResponse);
+    rpc CreateForumSection(CreateForumSectionRequest) returns (CreateForumSectionResponse);
+    
+    rpc GetTags(GetTagsRequest) returns (GetTagsResponse);
+    rpc SearchPosts(SearchPostsRequest) returns (SearchPostsResponse);
+    
+    rpc GetUserBadges(GetUserBadgesRequest) returns (GetUserBadgesResponse);
+    rpc GetAllBadges(GetSystemMetricsResponse) returns (GetAllBadgesResponse);
+    
+    rpc UpdateOnlineStatus(UpdateOnlineStatusRequest) returns (UpdateOnlineStatusResponse);
+    rpc GetOnlineUsers(GetOnlineUsersRequest) returns (GetOnlineUsersResponse);
+    rpc GetReadingHistory(GetReadingHistoryRequest) returns (GetReadingHistoryResponse);
+    
+    rpc GetForumStats(GetSystemMetricsResponse) returns (GetForumStatsResponse);
+    
+    rpc CreatePoll(CreatePollRequest) returns (CreatePollResponse);
+    rpc VotePoll(VotePollRequest) returns (VotePollResponse);
+    rpc GetPoll(GetPollRequest) returns (GetPollResponse);
+    
+    rpc GetGiftList(GetSystemMetricsResponse) returns (GetGiftListResponse);
+    rpc SendGift(SendGiftRequest) returns (SendGiftResponse);
+    rpc GetUserGifts(GetUserGiftsRequest) returns (GetUserGiftsResponse);
+    
+    rpc BanUser(BanUserRequest) returns (BanUserResponse);
+    rpc UnbanUser(UnbanUserRequest) returns (UnbanUserResponse);
+    rpc GetUserBan(GetUserBanRequest) returns (GetUserBanResponse);
+    
+    rpc GetModeratorLogs(GetModeratorLogsRequest) returns (GetModeratorLogsResponse);
+    rpc ManagePost(ManagePostRequest) returns (ManagePostResponse);
+    
+    rpc GetShopItems(GetSystemMetricsResponse) returns (GetShopItemsResponse);
+    rpc PurchaseItem(PurchaseItemRequest) returns (PurchaseItemResponse);
+    rpc GetUserInventory(GetUserInventoryRequest) returns (GetUserInventoryResponse);
+    
+    rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+    
+    rpc CreateFavoriteFolder(CreateFavoriteFolderRequest) returns (CreateFavoriteFolderResponse);
+    rpc GetFavoriteFolders(GetFavoriteFoldersRequest) returns (GetFavoriteFoldersResponse);
+    
+    rpc SubscribeUser(SubscribeUserRequest) returns (SubscribeUserResponse);
+    
+    rpc GetDailyTasks(GetDailyTasksRequest) returns (GetDailyTasksResponse);
 }
 
 message HealthCheckRequest {}
@@ -1399,4 +1442,478 @@ message GetSystemMetricsResponse {
     string message = 2;
     SystemMetrics metrics = 3;
     map<string, int64> endpoint_counts = 4;
+}
+
+message ForumSection {
+    int64 id = 1;
+    string name = 2;
+    string description = 3;
+    string icon = 4;
+    int64 sort_order = 5;
+    int64 parent_id = 6;
+    int32 post_count = 7;
+    int32 thread_count = 8;
+    bool is_active = 9;
+    repeated int64 moderator_ids = 10;
+    int64 created_at = 11;
+}
+
+message GetForumSectionsRequest {
+    int64 parent_id = 1;
+}
+
+message GetForumSectionsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ForumSection sections = 3;
+}
+
+message CreateForumSectionRequest {
+    string access_token = 1;
+    string name = 2;
+    string description = 3;
+    string icon = 4;
+    int64 sort_order = 5;
+    int64 parent_id = 6;
+}
+
+message CreateForumSectionResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 section_id = 3;
+}
+
+message Tag {
+    int64 id = 1;
+    string name = 2;
+    string color = 3;
+    int32 use_count = 4;
+}
+
+message GetTagsRequest {}
+
+message GetTagsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Tag tags = 3;
+}
+
+message SearchPostsRequest {
+    string keyword = 1;
+    int64 section_id = 2;
+    string tag = 3;
+    string user_id = 4;
+    int32 page = 5;
+    int32 page_size = 6;
+    string sort_by = 7;
+}
+
+message SearchPostsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Post posts = 3;
+    int32 total = 4;
+}
+
+message Badge {
+    int64 id = 1;
+    string name = 2;
+    string description = 3;
+    string icon = 4;
+    string rarity = 5;
+    int32 requirement_type = 6;
+    int32 requirement_value = 7;
+}
+
+message GetUserBadgesRequest {
+    string user_id = 1;
+}
+
+message GetUserBadgesResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Badge badges = 3;
+}
+
+message GetAllBadgesResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Badge badges = 3;
+}
+
+message UserOnlineStatus {
+    string user_id = 1;
+    bool is_online = 2;
+    int64 last_active = 3;
+    string status_text = 4;
+}
+
+message UpdateOnlineStatusRequest {
+    string access_token = 1;
+    string status_text = 2;
+}
+
+message UpdateOnlineStatusResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GetOnlineUsersRequest {
+    int32 limit = 1;
+}
+
+message GetOnlineUsersResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated UserOnlineStatus users = 3;
+    int32 total_online = 4;
+}
+
+message ReadingHistory {
+    int64 post_id = 1;
+    string post_title = 2;
+    int64 read_at = 3;
+}
+
+message GetReadingHistoryRequest {
+    string access_token = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message GetReadingHistoryResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ReadingHistory history = 3;
+    int32 total = 4;
+}
+
+message ForumStats {
+    int64 total_users = 1;
+    int64 total_posts = 2;
+    int64 total_comments = 3;
+    int64 today_posts = 4;
+    int64 today_registrations = 5;
+    int64 max_online_users = 6;
+    int64 max_online_time = 7;
+}
+
+message GetForumStatsResponse {
+    int32 code = 1;
+    string message = 2;
+    ForumStats stats = 3;
+    string newest_user_id = 4;
+    string newest_username = 5;
+}
+
+message PollOption {
+    int64 id = 1;
+    string text = 2;
+    int32 vote_count = 3;
+}
+
+message Poll {
+    int64 id = 1;
+    string question = 2;
+    repeated PollOption options = 3;
+    bool is_multiple = 4;
+    int64 end_time = 5;
+    bool is_closed = 6;
+    int32 total_votes = 7;
+    repeated int64 user_votes = 8;
+}
+
+message CreatePollRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    string question = 3;
+    repeated string options = 4;
+    bool is_multiple = 5;
+    int64 end_time = 6;
+}
+
+message CreatePollResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 poll_id = 3;
+}
+
+message VotePollRequest {
+    string access_token = 1;
+    int64 poll_id = 2;
+    repeated int64 option_ids = 3;
+}
+
+message VotePollResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GetPollRequest {
+    int64 poll_id = 1;
+    string access_token = 2;
+}
+
+message GetPollResponse {
+    int32 code = 1;
+    string message = 2;
+    Poll poll = 3;
+}
+
+message Gift {
+    int64 id = 1;
+    string name = 2;
+    string description = 3;
+    string image = 4;
+    int32 price = 5;
+    string rarity = 6;
+    bool is_available = 7;
+}
+
+message SendGiftRequest {
+    string access_token = 1;
+    string to_user_id = 2;
+    int64 post_id = 3;
+    int64 gift_id = 4;
+    int32 quantity = 5;
+    string message = 6;
+    bool is_anonymous = 7;
+}
+
+message SendGiftResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GetGiftListResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Gift gifts = 3;
+}
+
+message GetUserGiftsRequest {
+    string user_id = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message ReceivedGift {
+    Gift gift = 1;
+    int32 quantity = 2;
+    string from_username = 3;
+    string message = 4;
+    int64 sent_at = 5;
+    bool is_anonymous = 6;
+}
+
+message GetUserGiftsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ReceivedGift gifts = 3;
+    int32 total = 4;
+    int32 total_value = 5;
+}
+
+message UserBan {
+    int64 id = 1;
+    string user_id = 2;
+    string moderator_id = 3;
+    string reason = 4;
+    string type = 5;
+    int64 expire_at = 6;
+    bool is_permanent = 7;
+    int64 created_at = 8;
+}
+
+message BanUserRequest {
+    string access_token = 1;
+    string user_id = 2;
+    string reason = 3;
+    string type = 4;
+    int64 duration_seconds = 5;
+}
+
+message BanUserResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message UnbanUserRequest {
+    string access_token = 1;
+    string user_id = 2;
+    string reason = 3;
+}
+
+message UnbanUserResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GetUserBanRequest {
+    string user_id = 1;
+}
+
+message GetUserBanResponse {
+    int32 code = 1;
+    string message = 2;
+    UserBan ban = 3;
+    bool is_banned = 4;
+    bool is_muted = 5;
+}
+
+message ModeratorLog {
+    int64 id = 1;
+    string moderator_id = 2;
+    string action = 3;
+    int64 target_id = 4;
+    string target_type = 5;
+    string reason = 6;
+    int64 created_at = 7;
+}
+
+message GetModeratorLogsRequest {
+    string access_token = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message GetModeratorLogsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ModeratorLog logs = 3;
+    int32 total = 4;
+}
+
+message ManagePostRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    string action = 3;
+    int64 target_section_id = 4;
+    string reason = 5;
+}
+
+message ManagePostResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message ShopItem {
+    int64 id = 1;
+    string name = 2;
+    string description = 3;
+    string image = 4;
+    string type = 5;
+    int32 price = 6;
+    int32 stock = 7;
+    bool is_available = 8;
+    map<string, string> properties = 9;
+}
+
+message GetShopItemsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ShopItem items = 3;
+}
+
+message PurchaseItemRequest {
+    string access_token = 1;
+    int64 item_id = 2;
+    int32 quantity = 3;
+}
+
+message PurchaseItemResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GetUserInventoryRequest {
+    string access_token = 1;
+}
+
+message GetUserInventoryResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ShopItem items = 3;
+}
+
+message AvatarFrame {
+    int64 id = 1;
+    string name = 2;
+    string image_url = 3;
+    string rarity = 4;
+    int32 price = 5;
+}
+
+message UpdateProfileRequest {
+    string access_token = 1;
+    string signature = 2;
+    int64 active_avatar_frame_id = 3;
+}
+
+message UpdateProfileResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message FavoriteFolder {
+    int64 id = 1;
+    string name = 2;
+    int32 post_count = 3;
+    bool is_public = 4;
+    int64 created_at = 5;
+}
+
+message CreateFavoriteFolderRequest {
+    string access_token = 1;
+    string name = 2;
+    bool is_public = 3;
+}
+
+message CreateFavoriteFolderResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 folder_id = 3;
+}
+
+message GetFavoriteFoldersRequest {
+    string access_token = 1;
+    string user_id = 2;
+}
+
+message GetFavoriteFoldersResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated FavoriteFolder folders = 3;
+}
+
+message SubscribeUserRequest {
+    string access_token = 1;
+    string target_user_id = 2;
+}
+
+message SubscribeUserResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message DailyTask {
+    int32 id = 1;
+    string name = 2;
+    string description = 3;
+    int32 reward_points = 4;
+    bool is_completed = 5;
+    int32 progress = 6;
+    int32 target = 7;
+}
+
+message GetDailyTasksRequest {
+    string access_token = 1;
+}
+
+message GetDailyTasksResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated DailyTask tasks = 3;
+    int32 consecutive_days = 4;
+    int32 max_consecutive_days = 5;
 }

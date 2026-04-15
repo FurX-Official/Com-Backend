@@ -297,6 +297,122 @@ public:
     ::trpc::Status GetSystemMetrics(::trpc::ServerContextPtr context,
                                    const ::furbbs::GetSystemMetricsResponse* request,
                                    ::furbbs::GetSystemMetricsResponse* response) override;
+
+    ::trpc::Status GetForumSections(::trpc::ServerContextPtr context,
+                                   const ::furbbs::GetForumSectionsRequest* request,
+                                   ::furbbs::GetForumSectionsResponse* response) override;
+
+    ::trpc::Status CreateForumSection(::trpc::ServerContextPtr context,
+                                     const ::furbbs::CreateForumSectionRequest* request,
+                                     ::furbbs::CreateForumSectionResponse* response) override;
+
+    ::trpc::Status GetTags(::trpc::ServerContextPtr context,
+                          const ::furbbs::GetTagsRequest* request,
+                          ::furbbs::GetTagsResponse* response) override;
+
+    ::trpc::Status SearchPosts(::trpc::ServerContextPtr context,
+                              const ::furbbs::SearchPostsRequest* request,
+                              ::furbbs::SearchPostsResponse* response) override;
+
+    ::trpc::Status GetUserBadges(::trpc::ServerContextPtr context,
+                                const ::furbbs::GetUserBadgesRequest* request,
+                                ::furbbs::GetUserBadgesResponse* response) override;
+
+    ::trpc::Status GetAllBadges(::trpc::ServerContextPtr context,
+                               const ::furbbs::GetSystemMetricsResponse* request,
+                               ::furbbs::GetAllBadgesResponse* response) override;
+
+    ::trpc::Status UpdateOnlineStatus(::trpc::ServerContextPtr context,
+                                     const ::furbbs::UpdateOnlineStatusRequest* request,
+                                     ::furbbs::UpdateOnlineStatusResponse* response) override;
+
+    ::trpc::Status GetOnlineUsers(::trpc::ServerContextPtr context,
+                                 const ::furbbs::GetOnlineUsersRequest* request,
+                                 ::furbbs::GetOnlineUsersResponse* response) override;
+
+    ::trpc::Status GetReadingHistory(::trpc::ServerContextPtr context,
+                                    const ::furbbs::GetReadingHistoryRequest* request,
+                                    ::furbbs::GetReadingHistoryResponse* response) override;
+
+    ::trpc::Status GetForumStats(::trpc::ServerContextPtr context,
+                                const ::furbbs::GetSystemMetricsResponse* request,
+                                ::furbbs::GetForumStatsResponse* response) override;
+
+    ::trpc::Status CreatePoll(::trpc::ServerContextPtr context,
+                             const ::furbbs::CreatePollRequest* request,
+                             ::furbbs::CreatePollResponse* response) override;
+
+    ::trpc::Status VotePoll(::trpc::ServerContextPtr context,
+                           const ::furbbs::VotePollRequest* request,
+                           ::furbbs::VotePollResponse* response) override;
+
+    ::trpc::Status GetPoll(::trpc::ServerContextPtr context,
+                          const ::furbbs::GetPollRequest* request,
+                          ::furbbs::GetPollResponse* response) override;
+
+    ::trpc::Status GetGiftList(::trpc::ServerContextPtr context,
+                              const ::furbbs::GetSystemMetricsResponse* request,
+                              ::furbbs::GetGiftListResponse* response) override;
+
+    ::trpc::Status SendGift(::trpc::ServerContextPtr context,
+                           const ::furbbs::SendGiftRequest* request,
+                           ::furbbs::SendGiftResponse* response) override;
+
+    ::trpc::Status GetUserGifts(::trpc::ServerContextPtr context,
+                               const ::furbbs::GetUserGiftsRequest* request,
+                               ::furbbs::GetUserGiftsResponse* response) override;
+
+    ::trpc::Status BanUser(::trpc::ServerContextPtr context,
+                          const ::furbbs::BanUserRequest* request,
+                          ::furbbs::BanUserResponse* response) override;
+
+    ::trpc::Status UnbanUser(::trpc::ServerContextPtr context,
+                            const ::furbbs::UnbanUserRequest* request,
+                            ::furbbs::UnbanUserResponse* response) override;
+
+    ::trpc::Status GetUserBan(::trpc::ServerContextPtr context,
+                            const ::furbbs::GetUserBanRequest* request,
+                            ::furbbs::GetUserBanResponse* response) override;
+
+    ::trpc::Status GetModeratorLogs(::trpc::ServerContextPtr context,
+                                  const ::furbbs::GetModeratorLogsRequest* request,
+                                  ::furbbs::GetModeratorLogsResponse* response) override;
+
+    ::trpc::Status ManagePost(::trpc::ServerContextPtr context,
+                            const ::furbbs::ManagePostRequest* request,
+                            ::furbbs::ManagePostResponse* response) override;
+
+    ::trpc::Status GetShopItems(::trpc::ServerContextPtr context,
+                                const ::furbbs::GetSystemMetricsResponse* request,
+                                ::furbbs::GetShopItemsResponse* response) override;
+
+    ::trpc::Status PurchaseItem(::trpc::ServerContextPtr context,
+                               const ::furbbs::PurchaseItemRequest* request,
+                               ::furbbs::PurchaseItemResponse* response) override;
+
+    ::trpc::Status GetUserInventory(::trpc::ServerContextPtr context,
+                                   const ::furbbs::GetUserInventoryRequest* request,
+                                   ::furbbs::GetUserInventoryResponse* response) override;
+
+    ::trpc::Status UpdateProfile(::trpc::ServerContextPtr context,
+                                const ::furbbs::UpdateProfileRequest* request,
+                                ::furbbs::UpdateProfileResponse* response) override;
+
+    ::trpc::Status CreateFavoriteFolder(::trpc::ServerContextPtr context,
+                                        const ::furbbs::CreateFavoriteFolderRequest* request,
+                                        ::furbbs::CreateFavoriteFolderResponse* response) override;
+
+    ::trpc::Status GetFavoriteFolders(::trpc::ServerContextPtr context,
+                                         const ::furbbs::GetFavoriteFoldersRequest* request,
+                                         ::furbbs::GetFavoriteFoldersResponse* response) override;
+
+    ::trpc::Status SubscribeUser(::trpc::ServerContextPtr context,
+                                 const ::furbbs::SubscribeUserRequest* request,
+                                 ::furbbs::SubscribeUserResponse* response) override;
+
+    ::trpc::Status GetDailyTasks(::trpc::ServerContextPtr context,
+                                   const ::furbbs::GetDailyTasksRequest* request,
+                                   ::furbbs::GetDailyTasksResponse* response) override;
 };
 
 } // namespace furbbs::service
