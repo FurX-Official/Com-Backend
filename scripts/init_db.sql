@@ -1656,3 +1656,126 @@ CREATE TABLE IF NOT EXISTS user_themes (
     use_count INT DEFAULT 0,
     created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
 );
+
+CREATE TABLE IF NOT EXISTS paid_content (
+    id SERIAL PRIMARY KEY,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    author_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    price INT NOT NULL DEFAULT 100,
+    preview_content TEXT,
+    full_content TEXT,
+    purchase_count INT DEFAULT 0,
+    revenue INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS content_purchases (
+    id SERIAL PRIMARY KEY,
+    content_id BIGINT REFERENCES paid_content(id) ON DELETE CASCADE,
+    buyer_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    price_paid INT NOT NULL,
+    purchased_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(content_id, buyer_id)
+);
+
+CREATE TABLE IF NOT EXISTS galleries (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(64) NOT NULL,
+    description TEXT,
+    cover_image VARCHAR(256),
+    is_public BOOLEAN DEFAULT TRUE,
+    is_nsfw BOOLEAN DEFAULT FALSE,
+    item_count INT DEFAULT 0,
+    view_count INT DEFAULT 0,
+    like_count INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS gallery_items (
+    id SERIAL PRIMARY KEY,
+    gallery_id INT REFERENCES galleries(id) ON DELETE CASCADE,
+    title VARCHAR(128),
+    description TEXT,
+    image_url VARCHAR(256) NOT NULL,
+    thumbnail_url VARCHAR(256),
+    fursona_id BIGINT REFERENCES fursonas(id) ON DELETE SET NULL,
+    artist_name VARCHAR(64),
+    is_nsfw BOOLEAN DEFAULT FALSE,
+    view_count INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS gallery_favorites (
+    gallery_id INT REFERENCES galleries(id) ON DELETE CASCADE,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (gallery_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS point_transfers (
+    id SERIAL PRIMARY KEY,
+    from_user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    to_user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    amount INT NOT NULL,
+    message VARCHAR(256),
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS red_envelopes (
+    id SERIAL PRIMARY KEY,
+    sender_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    total_amount INT NOT NULL,
+    count INT NOT NULL,
+    remaining_amount INT NOT NULL,
+    remaining_count INT NOT NULL,
+    message VARCHAR(256),
+    is_random BOOLEAN DEFAULT TRUE,
+    expires_at BIGINT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS red_envelope_claims (
+    envelope_id INT REFERENCES red_envelopes(id) ON DELETE CASCADE,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    amount INT NOT NULL,
+    claimed_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (envelope_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS post_rewards (
+    id SERIAL PRIMARY KEY,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    sender_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    amount INT NOT NULL,
+    message VARCHAR(256),
+    anonymous BOOLEAN DEFAULT FALSE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS collections (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(64) NOT NULL,
+    description TEXT,
+    cover_image VARCHAR(256),
+    is_public BOOLEAN DEFAULT TRUE,
+    item_count INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS collection_items (
+    collection_id INT REFERENCES collections(id) ON DELETE CASCADE,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    added_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (collection_id, post_id)
+);
+
+CREATE INDEX idx_paid_content ON paid_content(author_id, created_at DESC);
+CREATE INDEX idx_purchases ON content_purchases(buyer_id, purchased_at DESC);
+CREATE INDEX idx_galleries ON galleries(user_id, is_public, created_at DESC);
+CREATE INDEX idx_gallery_items ON gallery_items(gallery_id, created_at DESC);
+CREATE INDEX idx_transfers ON point_transfers(from_user_id, created_at DESC);
+CREATE INDEX idx_rewards ON post_rewards(post_id, created_at DESC);
+CREATE INDEX idx_collections ON collections(user_id, created_at DESC);

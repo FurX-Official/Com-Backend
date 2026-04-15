@@ -41,6 +41,11 @@ file(GLOB_RECURSE SRC_FILES
     "${PROJECT_SOURCE_DIR}/src/common/content_filter.cc"
     "${PROJECT_SOURCE_DIR}/src/common/captcha_verifier.cc"
     "${PROJECT_SOURCE_DIR}/src/middleware/*.cc"
+    "${PROJECT_SOURCE_DIR}/src/repository/customization_repository.cc"
+    "${PROJECT_SOURCE_DIR}/src/service_impl/customization_service.h"
+    "${PROJECT_SOURCE_DIR}/src/repository/economy_repository.cc"
+    "${PROJECT_SOURCE_DIR}/src/repository/economy_repository.h"
+    "${PROJECT_SOURCE_DIR}/src/service_impl/economy_service.h"
 )
 
 file(GLOB_RECURSE PROTO_FILES

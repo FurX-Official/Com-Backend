@@ -677,6 +677,333 @@ message GroupCustomSettings {
     bool visible_members = 13;
 }
 
+message PaidContent {
+    int64 id = 1;
+    int64 post_id = 2;
+    int32 price = 3;
+    string preview_content = 4;
+    string full_content = 5;
+    int32 purchase_count = 6;
+    int32 revenue = 7;
+    bool purchased = 8;
+    int64 created_at = 9;
+}
+
+message Gallery {
+    int64 id = 1;
+    string user_id = 2;
+    string username = 3;
+    string avatar = 4;
+    string name = 5;
+    string description = 6;
+    string cover_image = 7;
+    bool is_public = 8;
+    bool is_nsfw = 9;
+    int32 item_count = 10;
+    int32 view_count = 11;
+    int32 like_count = 12;
+    bool is_favorited = 13;
+    int64 created_at = 14;
+}
+
+message GalleryItem {
+    int64 id = 1;
+    int64 gallery_id = 2;
+    string title = 3;
+    string description = 4;
+    string image_url = 5;
+    string thumbnail_url = 6;
+    int64 fursona_id = 7;
+    string artist_name = 8;
+    bool is_nsfw = 9;
+    int32 view_count = 10;
+    int64 created_at = 11;
+}
+
+message PointTransfer {
+    int64 id = 1;
+    string from_user_id = 2;
+    string from_username = 3;
+    string from_avatar = 4;
+    string to_user_id = 5;
+    string to_username = 6;
+    string to_avatar = 7;
+    int32 amount = 8;
+    string message = 9;
+    int64 created_at = 10;
+}
+
+message RedEnvelope {
+    int64 id = 1;
+    string sender_id = 2;
+    string sender_name = 3;
+    string sender_avatar = 4;
+    int32 total_amount = 5;
+    int32 count = 6;
+    int32 remaining_amount = 7;
+    int32 remaining_count = 8;
+    string message = 9;
+    bool is_random = 10;
+    int64 expires_at = 11;
+    int64 created_at = 12;
+}
+
+message PostReward {
+    int64 id = 1;
+    int64 post_id = 2;
+    string sender_id = 3;
+    string sender_name = 4;
+    string sender_avatar = 5;
+    int32 amount = 6;
+    string message = 7;
+    bool anonymous = 8;
+    int64 created_at = 9;
+}
+
+message Collection {
+    int64 id = 1;
+    string name = 2;
+    string description = 3;
+    string cover_image = 4;
+    bool is_public = 5;
+    int32 item_count = 6;
+    int64 created_at = 7;
+}
+
+message CreatePaidContentRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    int32 price = 3;
+    string preview_content = 4;
+    string full_content = 5;
+}
+
+message CreatePaidContentResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 content_id = 3;
+}
+
+message GetUserPaidContentsRequest {
+    string access_token = 1;
+    string user_id = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetUserPaidContentsResponse {
+    int32 code = 1;
+    string message = 2;
+    int32 total = 3;
+    repeated PaidContent contents = 4;
+}
+
+message PurchaseContentRequest {
+    string access_token = 1;
+    int64 content_id = 2;
+}
+
+message PurchaseContentResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message CreateGalleryRequest {
+    string access_token = 1;
+    string name = 2;
+    string description = 3;
+    string cover_image = 4;
+    bool is_public = 5;
+    bool is_nsfw = 6;
+}
+
+message CreateGalleryResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 gallery_id = 3;
+}
+
+message GetGalleriesRequest {
+    string access_token = 1;
+    string user_id = 2;
+    bool only_public = 3;
+    int32 page = 4;
+    int32 page_size = 5;
+}
+
+message GetGalleriesResponse {
+    int32 code = 1;
+    string message = 2;
+    int32 total = 3;
+    repeated Gallery galleries = 4;
+}
+
+message AddGalleryItemRequest {
+    string access_token = 1;
+    int64 gallery_id = 2;
+    string title = 3;
+    string description = 4;
+    string image_url = 5;
+    string thumbnail_url = 6;
+    int64 fursona_id = 7;
+    string artist_name = 8;
+    bool is_nsfw = 9;
+}
+
+message AddGalleryItemResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 item_id = 3;
+}
+
+message GetGalleryItemsRequest {
+    string access_token = 1;
+    int64 gallery_id = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetGalleryItemsResponse {
+    int32 code = 1;
+    string message = 2;
+    int32 total = 3;
+    repeated GalleryItem items = 4;
+}
+
+message FavoriteGalleryRequest {
+    string access_token = 1;
+    int64 gallery_id = 2;
+    bool favorite = 3;
+}
+
+message FavoriteGalleryResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message TransferPointsRequest {
+    string access_token = 1;
+    string to_user_id = 2;
+    int32 amount = 3;
+    string message = 4;
+}
+
+message TransferPointsResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GetTransferHistoryRequest {
+    string access_token = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message GetTransferHistoryResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated PointTransfer transfers = 3;
+}
+
+message CreateRedEnvelopeRequest {
+    string access_token = 1;
+    int32 total_amount = 2;
+    int32 count = 3;
+    string message = 4;
+    bool is_random = 5;
+}
+
+message CreateRedEnvelopeResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 envelope_id = 3;
+}
+
+message ClaimRedEnvelopeRequest {
+    string access_token = 1;
+    int64 envelope_id = 2;
+}
+
+message ClaimRedEnvelopeResponse {
+    int32 code = 1;
+    string message = 2;
+    int32 amount = 3;
+}
+
+message GetRedEnvelopesRequest {
+    int32 page = 1;
+    int32 page_size = 2;
+}
+
+message GetRedEnvelopesResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated RedEnvelope envelopes = 3;
+}
+
+message RewardPostRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    int32 amount = 3;
+    string message = 4;
+    bool anonymous = 5;
+}
+
+message RewardPostResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GetPostRewardsRequest {
+    int64 post_id = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message GetPostRewardsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated PostReward rewards = 3;
+}
+
+message CreateCollectionRequest {
+    string access_token = 1;
+    string name = 2;
+    string description = 3;
+    string cover_image = 4;
+    bool is_public = 5;
+}
+
+message CreateCollectionResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 collection_id = 3;
+}
+
+message AddToCollectionRequest {
+    string access_token = 1;
+    int64 collection_id = 2;
+    int64 post_id = 3;
+}
+
+message AddToCollectionResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GetCollectionsRequest {
+    string access_token = 1;
+    string user_id = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetCollectionsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Collection collections = 3;
+}
+
 message GetGroupCustomSettingsRequest {
     string access_token = 1;
     int64 group_id = 2;
@@ -971,6 +1298,30 @@ service FurBBSService {{
 
     rpc GetGroupCustomSettings(GetGroupCustomSettingsRequest) returns (GetGroupCustomSettingsResponse);
     rpc UpdateGroupCustomSettings(UpdateGroupCustomSettingsRequest) returns (UpdateGroupCustomSettingsResponse);
+
+    rpc CreatePaidContent(CreatePaidContentRequest) returns (CreatePaidContentResponse);
+    rpc GetUserPaidContents(GetUserPaidContentsRequest) returns (GetUserPaidContentsResponse);
+    rpc PurchaseContent(PurchaseContentRequest) returns (PurchaseContentResponse);
+
+    rpc CreateGallery(CreateGalleryRequest) returns (CreateGalleryResponse);
+    rpc GetGalleries(GetGalleriesRequest) returns (GetGalleriesResponse);
+    rpc AddGalleryItem(AddGalleryItemRequest) returns (AddGalleryItemResponse);
+    rpc GetGalleryItems(GetGalleryItemsRequest) returns (GetGalleryItemsResponse);
+    rpc FavoriteGallery(FavoriteGalleryRequest) returns (FavoriteGalleryResponse);
+
+    rpc TransferPoints(TransferPointsRequest) returns (TransferPointsResponse);
+    rpc GetTransferHistory(GetTransferHistoryRequest) returns (GetTransferHistoryResponse);
+
+    rpc CreateRedEnvelope(CreateRedEnvelopeRequest) returns (CreateRedEnvelopeResponse);
+    rpc ClaimRedEnvelope(ClaimRedEnvelopeRequest) returns (ClaimRedEnvelopeResponse);
+    rpc GetRedEnvelopes(GetRedEnvelopesRequest) returns (GetRedEnvelopesResponse);
+
+    rpc RewardPost(RewardPostRequest) returns (RewardPostResponse);
+    rpc GetPostRewards(GetPostRewardsRequest) returns (GetPostRewardsResponse);
+
+    rpc CreateCollection(CreateCollectionRequest) returns (CreateCollectionResponse);
+    rpc AddToCollection(AddToCollectionRequest) returns (AddToCollectionResponse);
+    rpc GetCollections(GetCollectionsRequest) returns (GetCollectionsResponse);
 }
 
 message HealthCheckRequest {}

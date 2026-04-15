@@ -16,6 +16,7 @@
 #include "../service_impl/social_service.h"
 #include "../service_impl/advanced_service.h"
 #include "../service_impl/customization_service.h"
+#include "../service_impl/economy_service.h"
 
 namespace furbbs::service {
 
@@ -7797,6 +7798,357 @@ static const int64_t SERVER_START_TIME = std::chrono::duration_cast<std::chrono:
 
     response->set_code(success ? 200 : 403);
     response->set_message(success ? "Updated" : "Permission denied");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::CreatePaidContent(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::CreatePaidContentRequest* request,
+                                                     ::furbbs::CreatePaidContentResponse* response) {
+    int64_t content_id = service::EconomyService::Instance().CreatePaidContent(
+        request->access_token(),
+        request->post_id(),
+        request->price(),
+        request->preview_content(),
+        request->full_content()
+    );
+
+    response->set_code(content_id > 0 ? 200 : 400);
+    response->set_message(content_id > 0 ? "Created" : "Failed");
+    if (content_id > 0) {
+        response->set_content_id(content_id);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserPaidContents(::trpc::ServerContextPtr context,
+                                                        const ::furbbs::GetUserPaidContentsRequest* request,
+                                                        ::furbbs::GetUserPaidContentsResponse* response) {
+    int total = 0;
+    auto contents = service::EconomyService::Instance().GetUserPaidContents(
+        request->access_token(),
+        request->user_id(),
+        request->page(),
+        request->page_size(),
+        total
+    );
+
+    for (const auto& c : contents) {
+        auto* pc = response->add_contents();
+        pc->set_id(c.id);
+        pc->set_post_id(c.post_id);
+        pc->set_price(c.price);
+        pc->set_preview_content(c.preview_content);
+        pc->set_full_content(c.full_content);
+        pc->set_purchase_count(c.purchase_count);
+        pc->set_purchased(c.purchased);
+    }
+    response->set_total(total);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::PurchaseContent(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::PurchaseContentRequest* request,
+                                                   ::furbbs::PurchaseContentResponse* response) {
+    bool success = service::EconomyService::Instance().PurchaseContent(
+        request->access_token(),
+        request->content_id()
+    );
+
+    response->set_code(success ? 200 : 400);
+    response->set_message(success ? "Purchased" : "Insufficient points or failed");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::CreateGallery(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::CreateGalleryRequest* request,
+                                                  ::furbbs::CreateGalleryResponse* response) {
+    int64_t gallery_id = service::EconomyService::Instance().CreateGallery(
+        request->access_token(),
+        request->name(),
+        request->description(),
+        request->cover_image(),
+        request->is_public(),
+        request->is_nsfw()
+    );
+
+    response->set_code(gallery_id > 0 ? 200 : 400);
+    response->set_message(gallery_id > 0 ? "Created" : "Failed");
+    if (gallery_id > 0) {
+        response->set_gallery_id(gallery_id);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetGalleries(::trpc::ServerContextPtr context,
+                                                const ::furbbs::GetGalleriesRequest* request,
+                                                ::furbbs::GetGalleriesResponse* response) {
+    int total = 0;
+    auto galleries = service::EconomyService::Instance().GetGalleries(
+        request->access_token(),
+        request->user_id(),
+        request->only_public(),
+        request->page(),
+        request->page_size(),
+        total
+    );
+
+    for (const auto& g : galleries) {
+        auto* gallery = response->add_galleries();
+        gallery->set_id(g.id);
+        gallery->set_name(g.name);
+        gallery->set_item_count(g.item_count);
+        gallery->set_is_favorited(g.is_favorited);
+        gallery->set_username(g.username);
+    }
+    response->set_total(total);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::AddGalleryItem(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::AddGalleryItemRequest* request,
+                                                  ::furbbs::AddGalleryItemResponse* response) {
+    furbbs::repository::GalleryItemEntity item;
+    item.title = request->title();
+    item.description = request->description();
+    item.image_url = request->image_url();
+    item.thumbnail_url = request->thumbnail_url();
+    item.fursona_id = request->fursona_id();
+    item.artist_name = request->artist_name();
+    item.is_nsfw = request->is_nsfw();
+
+    int64_t item_id = service::EconomyService::Instance().AddGalleryItem(
+        request->access_token(),
+        request->gallery_id(),
+        item
+    );
+
+    response->set_code(item_id > 0 ? 200 : 403);
+    response->set_message(item_id > 0 ? "Added" : "Permission denied");
+    if (item_id > 0) {
+        response->set_item_id(item_id);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetGalleryItems(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetGalleryItemsRequest* request,
+                                                   ::furbbs::GetGalleryItemsResponse* response) {
+    int total = 0;
+    auto items = service::EconomyService::Instance().GetGalleryItems(
+        request->access_token(),
+        request->gallery_id(),
+        request->page(),
+        request->page_size(),
+        total
+    );
+
+    for (const auto& i : items) {
+        auto* item = response->add_items();
+        item->set_id(i.id);
+        item->set_title(i.title);
+        item->set_image_url(i.image_url);
+    }
+    response->set_total(total);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::FavoriteGallery(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::FavoriteGalleryRequest* request,
+                                                    ::furbbs::FavoriteGalleryResponse* response) {
+    bool success = service::EconomyService::Instance().SetGalleryFavorite(
+        request->access_token(),
+        request->gallery_id(),
+        request->favorite()
+    );
+
+    response->set_code(success ? 200 : 400);
+    response->set_message(success ? "Updated" : "Failed");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::TransferPoints(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::TransferPointsRequest* request,
+                                                   ::furbbs::TransferPointsResponse* response) {
+    bool success = service::EconomyService::Instance().TransferPoints(
+        request->access_token(),
+        request->to_user_id(),
+        request->amount(),
+        request->message()
+    );
+
+    response->set_code(success ? 200 : 400);
+    response->set_message(success ? "Transferred" : "Insufficient points or failed");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetTransferHistory(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::GetTransferHistoryRequest* request,
+                                                      ::furbbs::GetTransferHistoryResponse* response) {
+    auto transfers = service::EconomyService::Instance().GetTransferHistory(
+        request->access_token(),
+        request->page(),
+        request->page_size()
+    );
+
+    for (const auto& t : transfers) {
+        auto* tr = response->add_transfers();
+        tr->set_id(t.id);
+        tr->set_from_username(t.from_username);
+        tr->set_to_username(t.to_username);
+        tr->set_amount(t.amount);
+    }
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::CreateRedEnvelope(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::CreateRedEnvelopeRequest* request,
+                                                      ::furbbs::CreateRedEnvelopeResponse* response) {
+    int64_t envelope_id = service::EconomyService::Instance().CreateRedEnvelope(
+        request->access_token(),
+        request->total_amount(),
+        request->count(),
+        request->message(),
+        request->is_random()
+    );
+
+    response->set_code(envelope_id > 0 ? 200 : 400);
+    response->set_message(envelope_id > 0 ? "Created" : "Insufficient points or failed");
+    if (envelope_id > 0) {
+        response->set_envelope_id(envelope_id);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::ClaimRedEnvelope(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::ClaimRedEnvelopeRequest* request,
+                                                     ::furbbs::ClaimRedEnvelopeResponse* response) {
+    int32_t amount = service::EconomyService::Instance().ClaimRedEnvelope(
+        request->access_token(),
+        request->envelope_id()
+    );
+
+    response->set_code(amount > 0 ? 200 : 400);
+    response->set_message(amount > 0 ? "Claimed" : "Expired or already claimed");
+    if (amount > 0) {
+        response->set_amount(amount);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetRedEnvelopes(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetRedEnvelopesRequest* request,
+                                                   ::furbbs::GetRedEnvelopesResponse* response) {
+    auto envelopes = service::EconomyService::Instance().GetActiveRedEnvelopes(
+        request->page(),
+        request->page_size()
+    );
+
+    for (const auto& e : envelopes) {
+        auto* env = response->add_envelopes();
+        env->set_id(e.id);
+        env->set_sender_name(e.sender_name);
+        env->set_total_amount(e.total_amount);
+    }
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::RewardPost(::trpc::ServerContextPtr context,
+                                              const ::furbbs::RewardPostRequest* request,
+                                              ::furbbs::RewardPostResponse* response) {
+    bool success = service::EconomyService::Instance().RewardPost(
+        request->access_token(),
+        request->post_id(),
+        request->amount(),
+        request->message(),
+        request->anonymous()
+    );
+
+    response->set_code(success ? 200 : 400);
+    response->set_message(success ? "Rewarded" : "Insufficient points or failed");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetPostRewards(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetPostRewardsRequest* request,
+                                                   ::furbbs::GetPostRewardsResponse* response) {
+    auto rewards = service::EconomyService::Instance().GetPostRewards(
+        request->post_id(),
+        request->page(),
+        request->page_size()
+    );
+
+    for (const auto& r : rewards) {
+        auto* reward = response->add_rewards();
+        reward->set_id(r.id);
+        reward->set_amount(r.amount);
+        reward->set_sender_name(r.sender_name);
+    }
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::CreateCollection(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::CreateCollectionRequest* request,
+                                                    ::furbbs::CreateCollectionResponse* response) {
+    int64_t collection_id = service::EconomyService::Instance().CreateCollection(
+        request->access_token(),
+        request->name(),
+        request->description(),
+        request->cover_image(),
+        request->is_public()
+    );
+
+    response->set_code(collection_id > 0 ? 200 : 400);
+    response->set_message(collection_id > 0 ? "Created" : "Failed");
+    if (collection_id > 0) {
+        response->set_collection_id(collection_id);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::AddToCollection(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::AddToCollectionRequest* request,
+                                                   ::furbbs::AddToCollectionResponse* response) {
+    bool success = service::EconomyService::Instance().AddToCollection(
+        request->access_token(),
+        request->collection_id(),
+        request->post_id()
+    );
+
+    response->set_code(success ? 200 : 403);
+    response->set_message(success ? "Added" : "Permission denied");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetCollections(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::GetCollectionsRequest* request,
+                                                  ::furbbs::GetCollectionsResponse* response) {
+    auto collections = service::EconomyService::Instance().GetUserCollections(
+        request->access_token(),
+        request->user_id(),
+        request->page(),
+        request->page_size()
+    );
+
+    for (const auto& c : collections) {
+        auto* col = response->add_collections();
+        col->set_id(c.id);
+        col->set_name(c.name);
+        col->set_item_count(c.item_count);
+    }
+    response->set_code(200);
+    response->set_message("Success");
     return ::trpc::kSuccStatus;
 }
 

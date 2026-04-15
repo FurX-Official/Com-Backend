@@ -791,8 +791,80 @@ public:
                                           ::furbbs::GetGroupCustomSettingsResponse* response) override;
 
     ::trpc::Status UpdateGroupCustomSettings(::trpc::ServerContextPtr context,
-                                             const ::furbbs::UpdateGroupCustomSettingsRequest* request,
-                                             ::furbbs::UpdateGroupCustomSettingsResponse* response) override;
+                                                const ::furbbs::UpdateGroupCustomSettingsRequest* request,
+                                                ::furbbs::UpdateGroupCustomSettingsResponse* response) override;
+
+    ::trpc::Status CreatePaidContent(::trpc::ServerContextPtr context,
+                                       const ::furbbs::CreatePaidContentRequest* request,
+                                       ::furbbs::CreatePaidContentResponse* response) override;
+
+    ::trpc::Status GetUserPaidContents(::trpc::ServerContextPtr context,
+                                          const ::furbbs::GetUserPaidContentsRequest* request,
+                                          ::furbbs::GetUserPaidContentsResponse* response) override;
+
+    ::trpc::Status PurchaseContent(::trpc::ServerContextPtr context,
+                                     const ::furbbs::PurchaseContentRequest* request,
+                                     ::furbbs::PurchaseContentResponse* response) override;
+
+    ::trpc::Status CreateGallery(::trpc::ServerContextPtr context,
+                                   const ::furbbs::CreateGalleryRequest* request,
+                                   ::furbbs::CreateGalleryResponse* response) override;
+
+    ::trpc::Status GetGalleries(::trpc::ServerContextPtr context,
+                                 const ::furbbs::GetGalleriesRequest* request,
+                                 ::furbbs::GetGalleriesResponse* response) override;
+
+    ::trpc::Status AddGalleryItem(::trpc::ServerContextPtr context,
+                                  const ::furbbs::AddGalleryItemRequest* request,
+                                  ::furbbs::AddGalleryItemResponse* response) override;
+
+    ::trpc::Status GetGalleryItems(::trpc::ServerContextPtr context,
+                                   const ::furbbs::GetGalleryItemsRequest* request,
+                                   ::furbbs::GetGalleryItemsResponse* response) override;
+
+    ::trpc::Status FavoriteGallery(::trpc::ServerContextPtr context,
+                                     const ::furbbs::FavoriteGalleryRequest* request,
+                                     ::furbbs::FavoriteGalleryResponse* response) override;
+
+    ::trpc::Status TransferPoints(::trpc::ServerContextPtr context,
+                                    const ::furbbs::TransferPointsRequest* request,
+                                    ::furbbs::TransferPointsResponse* response) override;
+
+    ::trpc::Status GetTransferHistory(::trpc::ServerContextPtr context,
+                                      const ::furbbs::GetTransferHistoryRequest* request,
+                                      ::furbbs::GetTransferHistoryResponse* response) override;
+
+    ::trpc::Status CreateRedEnvelope(::trpc::ServerContextPtr context,
+                                        const ::furbbs::CreateRedEnvelopeRequest* request,
+                                        ::furbbs::CreateRedEnvelopeResponse* response) override;
+
+    ::trpc::Status ClaimRedEnvelope(::trpc::ServerContextPtr context,
+                                       const ::furbbs::ClaimRedEnvelopeRequest* request,
+                                       ::furbbs::ClaimRedEnvelopeResponse* response) override;
+
+    ::trpc::Status GetRedEnvelopes(::trpc::ServerContextPtr context,
+                                    const ::furbbs::GetRedEnvelopesRequest* request,
+                                    ::furbbs::GetRedEnvelopesResponse* response) override;
+
+    ::trpc::Status RewardPost(::trpc::ServerContextPtr context,
+                                const ::furbbs::RewardPostRequest* request,
+                                ::furbbs::RewardPostResponse* response) override;
+
+    ::trpc::Status GetPostRewards(::trpc::ServerContextPtr context,
+                                     const ::furbbs::GetPostRewardsRequest* request,
+                                     ::furbbs::GetPostRewardsResponse* response) override;
+
+    ::trpc::Status CreateCollection(::trpc::ServerContextPtr context,
+                                      const ::furbbs::CreateCollectionRequest* request,
+                                      ::furbbs::CreateCollectionResponse* response) override;
+
+    ::trpc::Status AddToCollection(::trpc::ServerContextPtr context,
+                                       const ::furbbs::AddToCollectionRequest* request,
+                                       ::furbbs::AddToCollectionResponse* response) override;
+
+    ::trpc::Status GetCollections(::trpc::ServerContextPtr context,
+                                      const ::furbbs::GetCollectionsRequest* request,
+                                      ::furbbs::GetCollectionsResponse* response) override;
 };
 
 } // namespace furbbs::service
