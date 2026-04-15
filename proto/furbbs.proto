@@ -1,0 +1,220 @@
+syntax = "proto3";
+
+package furbbs;
+
+message UserInfo {
+    string id = 1;
+    string name = 2;
+    string avatar = 3;
+    string email = 4;
+    string display_name = 5;
+    string bio = 6;
+    int32 follower_count = 7;
+    int32 following_count = 8;
+    int64 created_at = 8;
+}
+
+message Category {
+    int64 id = 1;
+    string name = 2;
+    string description = 3;
+    string icon = 4;
+    int32 post_count = 5;
+    int64 created_at = 6;
+}
+
+message Tag {
+    int64 id = 1;
+    string name = 2;
+    string color = 3;
+    int32 use_count = 4;
+}
+
+message Post {
+    int64 id = 1;
+    string title = 2;
+    string content = 3;
+    string author_id = 4;
+    UserInfo author = 5;
+    int64 category_id = 6;
+    Category category = 7;
+    repeated Tag tags = 8;
+    int32 view_count = 9;
+    int32 like_count = 10;
+    int32 comment_count = 11;
+    bool is_pinned = 12;
+    bool is_locked = 13;
+    int64 created_at = 14;
+    int64 updated_at = 15;
+    repeated string images = 16;
+}
+
+message Comment {
+    int64 id = 1;
+    int64 post_id = 2;
+    string content = 3;
+    string author_id = 4;
+    UserInfo author = 5;
+    int64 parent_id = 6;
+    int32 like_count = 7;
+    int64 created_at = 8;
+    int64 updated_at = 9;
+}
+
+message GalleryItem {
+    int64 id = 1;
+    string title = 2;
+    string description = 3;
+    string image_url = 4;
+    string author_id = 5;
+    UserInfo author = 6;
+    repeated Tag tags = 7;
+    int32 like_count = 8;
+    int32 view_count = 9;
+    int64 created_at = 10;
+}
+
+message GetUserRequest {
+    string user_id = 1;
+}
+
+message GetUserResponse {
+    int32 code = 1;
+    string message = 2;
+    UserInfo user = 3;
+}
+
+message CreatePostRequest {
+    string title = 1;
+    string content = 2;
+    int64 category_id = 3;
+    repeated int64 tag_ids = 4;
+    repeated string images = 5;
+    string access_token = 6;
+}
+
+message CreatePostResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 post_id = 3;
+}
+
+message GetPostRequest {
+    int64 post_id = 1;
+}
+
+message GetPostResponse {
+    int32 code = 1;
+    string message = 2;
+    Post post = 3;
+}
+
+message ListPostsRequest {
+    int64 category_id = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+    string sort_by = 4;
+    string keyword = 5;
+}
+
+message ListPostsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Post posts = 3;
+    int32 total = 4;
+}
+
+message CreateCommentRequest {
+    int64 post_id = 1;
+    string content = 2;
+    int64 parent_id = 3;
+    string access_token = 4;
+}
+
+message CreateCommentResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 comment_id = 3;
+}
+
+message ListCommentsRequest {
+    int64 post_id = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message ListCommentsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Comment comments = 3;
+    int32 total = 4;
+}
+
+message LikePostRequest {
+    int64 post_id = 1;
+    string access_token = 2;
+}
+
+message LikePostResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message ListCategoriesRequest {}
+
+message ListCategoriesResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Category categories = 3;
+}
+
+message UploadGalleryRequest {
+    string title = 1;
+    string description = 2;
+    string image_url = 3;
+    repeated int64 tag_ids = 4;
+    string access_token = 5;
+}
+
+message UploadGalleryResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 gallery_id = 3;
+}
+
+message ListGalleryRequest {
+    int32 page = 1;
+    int32 page_size = 2;
+    int64 tag_id = 3;
+}
+
+message ListGalleryResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated GalleryItem items = 3;
+    int32 total = 4;
+}
+
+message FollowUserRequest {
+    string target_user_id = 1;
+    string access_token = 2;
+}
+
+message FollowUserResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+service FurBBSService {
+    rpc GetUser(GetUserRequest) returns (GetUserResponse);
+    rpc CreatePost(CreatePostRequest) returns (CreatePostResponse);
+    rpc GetPost(GetPostRequest) returns (GetPostResponse);
+    rpc ListPosts(ListPostsRequest) returns (ListPostsResponse);
+    rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
+    rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
+    rpc LikePost(LikePostRequest) returns (LikePostResponse);
+    rpc ListCategories(ListCategoriesRequest) returns (ListCategoriesResponse);
+    rpc UploadGallery(UploadGalleryRequest) returns (UploadGalleryResponse);
+    rpc ListGallery(ListGalleryRequest) returns (ListGalleryResponse);
+    rpc FollowUser(FollowUserRequest) returns (FollowUserResponse);
+}

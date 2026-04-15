@@ -1,0 +1,119 @@
+name: Build FurBBS
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    name: Build on Linux (x86_64)
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          libpq-dev \
+          libpqxx-dev \
+          libssl-dev \
+          libboost-all-dev \
+          libspdlog-dev \
+          nlohmann-json3-dev \
+          libyaml-cpp-dev \
+          libcurl4-openssl-dev
+
+    - name: Install tRPC
+      run: |
+        git clone --depth=1 https://github.com/trpc-group/trpc-cpp.git
+        cd trpc-cpp
+        mkdir build && cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release
+        make -j$(nproc)
+        sudo make install
+        cd ../..
+
+    - name: Configure CMake
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+          -DTRPC_ROOT=/usr/local/trpc-cpp
+
+    - name: Build
+      run: |
+        cd build
+        make -j$(nproc)
+
+    - name: Package
+      run: |
+        cd build
+        mkdir -p package/furbbs/bin
+        mkdir -p package/furbbs/config
+        cp furbbs_server package/furbbs/bin/
+        cp ../config/config.yaml package/furbbs/config/
+        cd package
+        tar -czf furbbs-linux-x86_64.tar.gz furbbs/
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: furbbs-linux-x86_64
+        path: build/package/furbbs-linux-x86_64.tar.gz
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: build/package/furbbs-linux-x86_64.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-docker:
+    runs-on: ubuntu-latest
+    name: Build Docker Image
+    needs: build-linux
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: furbbs/furbbs-server
+        tags: |
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+
+    - name: Build and push
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}

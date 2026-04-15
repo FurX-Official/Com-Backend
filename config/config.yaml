@@ -1,0 +1,30 @@
+server:
+  listen: 0.0.0.0:12345
+  thread_num: 4
+  idle_time: 60000
+
+database:
+  host: localhost
+  port: 5432
+  dbname: furbbs
+  user: postgres
+  password: postgres
+  max_connections: 20
+
+casdoor:
+  endpoint: http://localhost:8000
+  client_id: your_client_id
+  client_secret: your_client_secret
+  certificate: |
+    -----BEGIN CERTIFICATE-----
+    your_certificate_here
+    -----END CERTIFICATE-----
+  org_name: FurBBS
+  app_name: FurBBS
+  redirect_uri: http://localhost:3000/callback
+
+log:
+  level: info
+  file: ./logs/furbbs.log
+  max_size: 100
+  max_files: 10

@@ -1,0 +1,41 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+
+# Config overrides
+config/config.local.yaml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Executables
+*.exe
+*.out
+furbbs_server
+
+# Libraries
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+
+# CMake stuff
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
+install_manifest.txt
+Makefile
