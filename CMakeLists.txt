@@ -46,6 +46,11 @@ file(GLOB_RECURSE SRC_FILES
     "${PROJECT_SOURCE_DIR}/src/repository/economy_repository.cc"
     "${PROJECT_SOURCE_DIR}/src/repository/economy_repository.h"
     "${PROJECT_SOURCE_DIR}/src/service_impl/economy_service.h"
+    "${PROJECT_SOURCE_DIR}/src/controller/base_controller.h"
+    "${PROJECT_SOURCE_DIR}/src/controller/user_controller.cc"
+    "${PROJECT_SOURCE_DIR}/src/controller/post_controller.cc"
+    "${PROJECT_SOURCE_DIR}/src/controller/social_controller.cc"
+    "${PROJECT_SOURCE_DIR}/src/controller/economy_controller.cc"
 )
 
 file(GLOB_RECURSE PROTO_FILES
