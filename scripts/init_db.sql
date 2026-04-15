@@ -1277,3 +1277,89 @@ CREATE TABLE IF NOT EXISTS user_customization (
     owned_themes INT[] DEFAULT '{1,2,3}',
     updated_at BIGINT
 );
+
+CREATE TABLE IF NOT EXISTS shop_items (
+    id SERIAL PRIMARY KEY,
+    type INT NOT NULL,
+    item_id INT NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    description TEXT,
+    price INT NOT NULL,
+    discount_price INT,
+    stock INT DEFAULT -1,
+    sales INT DEFAULT 0,
+    is_hot BOOLEAN DEFAULT FALSE,
+    is_new BOOLEAN DEFAULT FALSE,
+    start_time BIGINT,
+    end_time BIGINT,
+    tags VARCHAR(64)[],
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+INSERT INTO shop_items (type, item_id, name, description, price, discount_price, is_hot, is_new, tags) VALUES
+(1, 2, '金色头像框', '尊贵金色边框，彰显贵族气质', 1000, 800, TRUE, FALSE, '{"热门","装扮"}'),
+(1, 3, '钻石头像框', '闪耀钻石边框，社区达人专属', 3000, 2500, TRUE, FALSE, '{"热门","装扮"}'),
+(1, 4, '彩虹头像框', '动态渐变彩虹特效', 5000, 4500, FALSE, TRUE, '{"新品","动态"}'),
+(2, 2, '社区达人头衔', '解锁橙色专属头衔', 2000, 1800, FALSE, FALSE, '{"头衔"}'),
+(2, 3, '大佬头衔', '解锁紫色专属头衔', 5000, 4500, FALSE, FALSE, '{"头衔"}'),
+(3, 2, '暗夜名牌样式', '护眼深色主题名牌', 1500, 1200, FALSE, FALSE, '{"名牌"}'),
+(3, 3, '渐变名牌样式', '炫酷渐变发光名牌', 3000, 2800, TRUE, FALSE, '{"热门","动态"}');
+
+CREATE TABLE IF NOT EXISTS purchase_history (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    shop_item_id INT REFERENCES shop_items(id),
+    price_paid INT NOT NULL,
+    quantity INT DEFAULT 1,
+    purchased_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_shop_type ON shop_items(type);
+CREATE INDEX idx_shop_active ON shop_items(is_active);
+
+CREATE TABLE IF NOT EXISTS daily_tasks (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(64) NOT NULL,
+    description VARCHAR(256) NOT NULL,
+    target_value INT NOT NULL,
+    points_reward INT NOT NULL,
+    task_type VARCHAR(32) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+INSERT INTO daily_tasks (name, description, target_value, points_reward, task_type) VALUES
+('每日签到', '完成每日签到', 1, 10, 'checkin'),
+('发布帖子', '发布1篇新帖子', 1, 20, 'post'),
+('发表评论', '发表3条评论', 3, 15, 'comment'),
+('点赞内容', '给5个内容点赞', 5, 10, 'like'),
+('访问社区', '每日访问社区', 1, 5, 'visit');
+
+CREATE TABLE IF NOT EXISTS user_task_progress (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    task_id INT REFERENCES daily_tasks(id),
+    current_value INT DEFAULT 0,
+    is_completed BOOLEAN DEFAULT FALSE,
+    is_claimed BOOLEAN DEFAULT FALSE,
+    last_updated DATE DEFAULT CURRENT_DATE,
+    PRIMARY KEY (user_id, task_id, last_updated)
+);
+
+CREATE TABLE IF NOT EXISTS user_checkins (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    checkin_date DATE PRIMARY KEY,
+    continuous_days INT DEFAULT 1,
+    points_earned INT DEFAULT 10,
+    is_bonus BOOLEAN DEFAULT FALSE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_checkin_user ON user_checkins(user_id, checkin_date);
+
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_essence BOOLEAN DEFAULT FALSE;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS essence_level INT DEFAULT 0;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_sticky BOOLEAN DEFAULT FALSE;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS sticky_weight INT DEFAULT 0;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS sticky_expiry BIGINT;
+
+CREATE INDEX idx_post_essence ON posts(is_essence);
+CREATE INDEX idx_post_sticky ON posts(is_sticky, sticky_weight DESC);

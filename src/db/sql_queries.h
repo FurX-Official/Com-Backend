@@ -523,6 +523,86 @@ const std::string USER_CUSTOMIZATION_SET = R"(
     updated_at = $4
 )";
 
+const std::string SHOP_ITEM_LIST = R"(
+    SELECT id, type, item_id, name, description, price,
+           discount_price, stock, sales, is_hot, is_new,
+           start_time, end_time, tags
+    FROM shop_items WHERE is_active = TRUE
+)";
+
+const std::string SHOP_ITEM_COUNT = R"(
+    SELECT COUNT(*) FROM shop_items WHERE is_active = TRUE
+)";
+
+const std::string SHOP_ITEM_GET_BY_ID = R"(
+    SELECT id, type, item_id, name, price, discount_price, stock
+    FROM shop_items WHERE id = $1 AND is_active = TRUE FOR UPDATE
+)";
+
+const std::string SHOP_ITEM_DEDUCT_STOCK = R"(
+    UPDATE shop_items SET stock = stock - $1, sales = sales + $1
+    WHERE id = $2
+)";
+
+const std::string PURCHASE_HISTORY_INSERT = R"(
+    INSERT INTO purchase_history (user_id, shop_item_id, price_paid, quantity, purchased_at)
+    VALUES ($1, $2, $3, $4, $5)
+)";
+
+const std::string DAILY_TASK_GET_USER = R"(
+    SELECT t.id, t.name, t.description, t.target_value, t.points_reward,
+           COALESCE(p.current_value, 0),
+           COALESCE(p.is_completed, FALSE),
+           COALESCE(p.is_claimed, FALSE)
+    FROM daily_tasks t
+    LEFT JOIN user_task_progress p ON t.id = p.task_id 
+        AND p.user_id = $1 AND p.last_updated = CURRENT_DATE
+    WHERE t.is_active = TRUE
+)";
+
+const std::string TASK_PROGRESS_UPDATE = R"(
+    INSERT INTO user_task_progress (user_id, task_id, current_value, is_completed, last_updated)
+    VALUES ($1, $2, $3, $4, CURRENT_DATE)
+    ON CONFLICT (user_id, task_id, last_updated) DO UPDATE SET
+    current_value = $3, is_completed = $4
+)";
+
+const std::string TASK_REWARD_CLAIM = R"(
+    UPDATE user_task_progress SET is_claimed = TRUE
+    WHERE user_id = $1 AND task_id = $2 AND last_updated = CURRENT_DATE
+)";
+
+const std::string CHECKIN_TODAY = R"(
+    SELECT 1 FROM user_checkins 
+    WHERE user_id = $1 AND checkin_date = CURRENT_DATE
+)";
+
+const std::string CHECKIN_LAST_CONTINUOUS = R"(
+    SELECT continuous_days FROM user_checkins
+    WHERE user_id = $1 AND checkin_date = CURRENT_DATE - INTERVAL '1 day'
+    ORDER BY checkin_date DESC LIMIT 1
+)";
+
+const std::string CHECKIN_INSERT = R"(
+    INSERT INTO user_checkins (user_id, continuous_days, points_earned, is_bonus, created_at)
+    VALUES ($1, $2, $3, $4, $5)
+)";
+
+const std::string CHECKIN_HISTORY = R"(
+    SELECT checkin_date FROM user_checkins
+    WHERE user_id = $1
+    ORDER BY checkin_date DESC
+)";
+
+const std::string POST_SET_ESSENCE = R"(
+    UPDATE posts SET is_essence = $1, essence_level = $2 WHERE id = $3
+)";
+
+const std::string POST_SET_STICKY = R"(
+    UPDATE posts SET is_sticky = $1, sticky_weight = $2, sticky_expiry = $3
+    WHERE id = $4
+)";
+
 } // namespace furbbs::db::sql
 
 #endif // FURBBS_DB_SQL_QUERIES_H

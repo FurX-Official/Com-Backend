@@ -585,6 +585,38 @@ public:
     ::trpc::Status SetCustomization(::trpc::ServerContextPtr context,
                                     const ::furbbs::SetCustomizationRequest* request,
                                     ::furbbs::SetCustomizationResponse* response) override;
+
+    ::trpc::Status GetShopItems(::trpc::ServerContextPtr context,
+                                const ::furbbs::GetShopItemsRequest* request,
+                                ::furbbs::GetShopItemsResponse* response) override;
+
+    ::trpc::Status PurchaseItem(::trpc::ServerContextPtr context,
+                                 const ::furbbs::PurchaseItemRequest* request,
+                                 ::furbbs::PurchaseItemResponse* response) override;
+
+    ::trpc::Status GetDailyTasks(::trpc::ServerContextPtr context,
+                                  const ::furbbs::GetDailyTasksRequest* request,
+                                  ::furbbs::GetDailyTasksResponse* response) override;
+
+    ::trpc::Status ClaimTaskReward(::trpc::ServerContextPtr context,
+                                    const ::furbbs::ClaimTaskRewardRequest* request,
+                                    ::furbbs::ClaimTaskRewardResponse* response) override;
+
+    ::trpc::Status CheckIn(::trpc::ServerContextPtr context,
+                           const ::furbbs::GetDailyTasksRequest* request,
+                           ::furbbs::CheckInResponse* response) override;
+
+    ::trpc::Status GetCheckInStatus(::trpc::ServerContextPtr context,
+                                      const ::furbbs::GetCheckInStatusRequest* request,
+                                      ::furbbs::GetCheckInStatusResponse* response) override;
+
+    ::trpc::Status SetEssence(::trpc::ServerContextPtr context,
+                               const ::furbbs::SetEssenceRequest* request,
+                               ::furbbs::SetEssenceResponse* response) override;
+
+    ::trpc::Status SetSticky(::trpc::ServerContextPtr context,
+                              const ::furbbs::SetStickyRequest* request,
+                              ::furbbs::SetStickyResponse* response) override;
 };
 
 } // namespace furbbs::service

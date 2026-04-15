@@ -680,6 +680,18 @@ service FurBBSService {
     
     rpc GetCustomizationItems(GetSystemMetricsResponse) returns (GetCustomizationItemsResponse);
     rpc SetCustomization(SetCustomizationRequest) returns (SetCustomizationResponse);
+    
+    rpc GetShopItems(GetShopItemsRequest) returns (GetShopItemsResponse);
+    rpc PurchaseItem(PurchaseItemRequest) returns (PurchaseItemResponse);
+    
+    rpc GetDailyTasks(GetDailyTasksRequest) returns (GetDailyTasksResponse);
+    rpc ClaimTaskReward(ClaimTaskRewardRequest) returns (ClaimTaskRewardResponse);
+    
+    rpc CheckIn(GetDailyTasksRequest) returns (CheckInResponse);
+    rpc GetCheckInStatus(GetCheckInStatusRequest) returns (GetCheckInStatusResponse);
+    
+    rpc SetEssence(SetEssenceRequest) returns (SetEssenceResponse);
+    rpc SetSticky(SetStickyRequest) returns (SetStickyResponse);
 }
 
 message HealthCheckRequest {}
@@ -2824,6 +2836,140 @@ message SetCustomizationRequest {
 }
 
 message SetCustomizationResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+enum ShopItemType {
+    SHOP_ITEM_TITLE = 0;
+    SHOP_ITEM_FRAME = 1;
+    SHOP_ITEM_NAMEPLATE = 2;
+    SHOP_ITEM_THEME = 3;
+    SHOP_ITEM_BADGE = 4;
+    SHOP_ITEM_POINTS = 5;
+}
+
+message ShopItem {
+    int32 id = 1;
+    ShopItemType type = 2;
+    int32 item_id = 3;
+    string name = 4;
+    string description = 5;
+    int32 price = 6;
+    int32 discount_price = 7;
+    int32 stock = 8;
+    int32 sales = 9;
+    bool is_hot = 10;
+    bool is_new = 11;
+    int64 start_time = 12;
+    int64 end_time = 13;
+    repeated string tags = 14;
+}
+
+message GetShopItemsRequest {
+    ShopItemType type = 1;
+    bool only_on_sale = 2;
+    string sort_by = 3;
+    int32 page = 4;
+    int32 page_size = 5;
+}
+
+message GetShopItemsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ShopItem items = 3;
+    int32 total = 4;
+}
+
+message PurchaseItemRequest {
+    string access_token = 1;
+    int32 shop_item_id = 2;
+    int32 quantity = 3;
+}
+
+message PurchaseItemResponse {
+    int32 code = 1;
+    string message = 2;
+    int32 points_spent = 3;
+    string item_name = 4;
+}
+
+message DailyTask {
+    int32 id = 1;
+    string name = 2;
+    string description = 3;
+    int32 target_value = 4;
+    int32 current_value = 5;
+    int32 points_reward = 6;
+    bool is_completed = 7;
+    bool is_claimed = 8;
+}
+
+message GetDailyTasksRequest {
+    string access_token = 1;
+}
+
+message GetDailyTasksResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated DailyTask tasks = 3;
+    int32 total_points_earned = 4;
+}
+
+message ClaimTaskRewardRequest {
+    string access_token = 1;
+    int32 task_id = 2;
+}
+
+message ClaimTaskRewardResponse {
+    int32 code = 1;
+    string message = 2;
+    int32 points_claimed = 3;
+}
+
+message CheckInResponse {
+    int32 code = 1;
+    string message = 2;
+    int32 points_earned = 3;
+    int32 continuous_days = 4;
+    bool is_bonus = 5;
+}
+
+message GetCheckInStatusRequest {
+    string access_token = 1;
+}
+
+message GetCheckInStatusResponse {
+    int32 code = 1;
+    string message = 2;
+    bool checked_in_today = 3;
+    int32 continuous_days = 4;
+    int32 total_check_ins = 5;
+    repeated int32 monthly_check_ins = 6;
+    int32 next_bonus_days = 7;
+}
+
+message SetEssenceRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    bool is_essence = 3;
+    int32 essence_level = 4;
+}
+
+message SetEssenceResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message SetStickyRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    bool is_sticky = 3;
+    int32 sticky_weight = 4;
+    int64 sticky_expiry = 5;
+}
+
+message SetStickyResponse {
     int32 code = 1;
     string message = 2;
 }

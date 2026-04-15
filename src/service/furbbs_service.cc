@@ -12,6 +12,7 @@
 #include "../common/infrastructure.h"
 #include "../service_impl/redeem_service.h"
 #include "../service_impl/customization_service.h"
+#include "../service_impl/shop_service.h"
 
 namespace furbbs::service {
 
@@ -6603,6 +6604,161 @@ static const int64_t SERVER_START_TIME = std::chrono::duration_cast<std::chrono:
         request->access_token(), request->nameplate_id(), request->theme_id());
     response->set_code(result.success ? 200 : 401);
     response->set_message(result.message);
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetShopItems(::trpc::ServerContextPtr context,
+                                                const ::furbbs::GetShopItemsRequest* request,
+                                                ::furbbs::GetShopItemsResponse* response) {
+    int total = 0;
+    auto items = service::ShopService::Instance().GetShopItems(
+        static_cast<int>(request->type()),
+        request->only_on_sale(),
+        request->sort_by(),
+        request->page(),
+        request->page_size(),
+        total
+    );
+
+    for (const auto& i : items) {
+        auto* item = response->add_items();
+        item->set_id(i.id);
+        item->set_type(static_cast<::furbbs::ShopItemType>(i.type));
+        item->set_item_id(i.item_id);
+        item->set_name(i.name);
+        item->set_description(i.description);
+        item->set_price(i.price);
+        item->set_discount_price(i.discount_price);
+        item->set_stock(i.stock);
+        item->set_sales(i.sales);
+        item->set_is_hot(i.is_hot);
+        item->set_is_new(i.is_new);
+        if (i.start_time > 0) item->set_start_time(i.start_time);
+        if (i.end_time > 0) item->set_end_time(i.end_time);
+        for (const auto& tag : i.tags) {
+            item->add_tags(tag);
+        }
+    }
+    response->set_total(total);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::PurchaseItem(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::PurchaseItemRequest* request,
+                                                 ::furbbs::PurchaseItemResponse* response) {
+    auto result = service::ShopService::Instance().PurchaseItem(
+        request->access_token(),
+        request->shop_item_id(),
+        std::max(1, request->quantity())
+    );
+
+    response->set_code(result.success ? 200 : 400);
+    response->set_message(result.message);
+    if (result.success) {
+        response->set_points_spent(result.points_spent);
+        response->set_item_name(result.item_name);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetDailyTasks(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::GetDailyTasksRequest* request,
+                                                  ::furbbs::GetDailyTasksResponse* response) {
+    int points_earned = 0;
+    auto tasks = service::ShopService::Instance().GetUserTasks(
+        request->access_token(), points_earned);
+
+    for (const auto& t : tasks) {
+        auto* task = response->add_tasks();
+        task->set_id(t.task_id);
+        task->set_name(t.name);
+        task->set_description(t.description);
+        task->set_target_value(t.target_value);
+        task->set_current_value(t.current_value);
+        task->set_points_reward(t.points_reward);
+        task->set_is_completed(t.is_completed);
+        task->set_is_claimed(t.is_claimed);
+    }
+    response->set_total_points_earned(points_earned);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::ClaimTaskReward(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::ClaimTaskRewardRequest* request,
+                                                    ::furbbs::ClaimTaskRewardResponse* response) {
+    auto result = service::ShopService::Instance().ClaimTaskReward(
+        request->access_token(), request->task_id());
+
+    response->set_code(result.success ? 200 : 400);
+    response->set_message(result.message);
+    if (result.success) {
+        response->set_points_claimed(result.points_claimed);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::CheckIn(::trpc::ServerContextPtr context,
+                                           const ::furbbs::GetDailyTasksRequest* request,
+                                           ::furbbs::CheckInResponse* response) {
+    auto result = service::ShopService::Instance().CheckIn(request->access_token());
+
+    response->set_code(result.success ? 200 : 400);
+    response->set_message(result.message);
+    response->set_points_earned(result.points_earned);
+    response->set_continuous_days(result.continuous_days);
+    response->set_is_bonus(result.is_bonus);
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetCheckInStatus(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::GetCheckInStatusRequest* request,
+                                                     ::furbbs::GetCheckInStatusResponse* response) {
+    auto status = service::ShopService::Instance().GetCheckInStatus(request->access_token());
+
+    response->set_checked_in_today(status.checked_in_today);
+    response->set_continuous_days(status.continuous_days);
+    response->set_total_check_ins(status.total_check_ins);
+    for (int d : status.monthly_days) {
+        response->add_monthly_check_ins(d);
+    }
+    response->set_next_bonus_days(7 - (status.continuous_days % 7));
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::SetEssence(::trpc::ServerContextPtr context,
+                                               const ::furbbs::SetEssenceRequest* request,
+                                               ::furbbs::SetEssenceResponse* response) {
+    bool success = service::ShopService::Instance().SetEssence(
+        request->access_token(),
+        request->post_id(),
+        request->is_essence(),
+        request->essence_level()
+    );
+
+    response->set_code(success ? 200 : 403);
+    response->set_message(success ? "Success" : "Permission denied");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::SetSticky(::trpc::ServerContextPtr context,
+                                              const ::furbbs::SetStickyRequest* request,
+                                              ::furbbs::SetStickyResponse* response) {
+    bool success = service::ShopService::Instance().SetSticky(
+        request->access_token(),
+        request->post_id(),
+        request->is_sticky(),
+        request->sticky_weight(),
+        request->sticky_expiry()
+    );
+
+    response->set_code(success ? 200 : 403);
+    response->set_message(success ? "Success" : "Permission denied");
     return ::trpc::kSuccStatus;
 }
 
