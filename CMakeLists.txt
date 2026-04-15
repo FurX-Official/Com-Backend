@@ -76,6 +76,7 @@ target_link_libraries(furbbs_server
     jwt-cpp
     OpenSSL::SSL
     OpenSSL::Crypto
+    ${CURL_LIBRARIES}
 )
 
 install(TARGETS furbbs_server DESTINATION ${CMAKE_INSTALL_BINDIR})

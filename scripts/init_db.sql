@@ -387,3 +387,79 @@ INSERT INTO sensitive_words (word, level, replacement) VALUES
 ('脏话1', 2, '***'),
 ('脏话2', 2, '***'),
 ('广告', 1, '**');
+
+CREATE TABLE IF NOT EXISTS open_apps (
+    id SERIAL PRIMARY KEY,
+    owner_id VARCHAR(128) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(128) NOT NULL,
+    description TEXT,
+    icon VARCHAR(512),
+    website VARCHAR(512),
+    callback_url VARCHAR(512),
+    client_id VARCHAR(64) UNIQUE NOT NULL,
+    client_secret VARCHAR(128) NOT NULL,
+    scopes VARCHAR(64)[] DEFAULT '{}',
+    is_active BOOLEAN DEFAULT TRUE,
+    rate_limit INTEGER DEFAULT 1000,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_open_apps_owner ON open_apps(owner_id);
+CREATE INDEX idx_open_apps_client_id ON open_apps(client_id);
+
+CREATE TABLE IF NOT EXISTS api_stats (
+    id SERIAL PRIMARY KEY,
+    client_id VARCHAR(64) NOT NULL,
+    endpoint VARCHAR(128) NOT NULL,
+    call_count INTEGER DEFAULT 1,
+    call_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(client_id, endpoint, call_date)
+);
+
+CREATE INDEX idx_api_stats_client_date ON api_stats(client_id, call_date);
+
+CREATE TABLE IF NOT EXISTS webhooks (
+    id SERIAL PRIMARY KEY,
+    app_id INTEGER NOT NULL REFERENCES open_apps(id) ON DELETE CASCADE,
+    endpoint VARCHAR(512) NOT NULL,
+    events VARCHAR(64)[] DEFAULT '{}',
+    secret VARCHAR(128) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_webhooks_app_id ON webhooks(app_id);
+
+CREATE TABLE IF NOT EXISTS announcements (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(256) NOT NULL,
+    content TEXT,
+    type VARCHAR(32) DEFAULT 'normal',
+    is_active BOOLEAN DEFAULT TRUE,
+    expire_at BIGINT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_announcements_active ON announcements(is_active);
+
+CREATE TABLE IF NOT EXISTS banners (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(128),
+    image VARCHAR(512) NOT NULL,
+    link VARCHAR(512),
+    "order" INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_banners_active_order ON banners(is_active, "order");
+
+INSERT INTO announcements (title, content, type) VALUES
+('欢迎来到FurBBS', '这是一个毛茸茸的Furry文化社区！', 'system'),
+('社区规范', '请遵守社区规范，共同维护友好的社区环境', 'important');
+
+INSERT INTO banners (title, image, link, "order") VALUES
+('兽设画廊', 'https://example.com/banner1.jpg', '/gallery', 1),
+('委托交易', 'https://example.com/banner2.jpg', '/commissions', 2),
+('线下兽聚', 'https://example.com/banner3.jpg', '/events', 3);

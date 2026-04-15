@@ -551,6 +551,19 @@ service FurBBSService {
     rpc GetFriendRequests(GetFriendRequestsRequest) returns (GetFriendRequestsResponse);
     rpc GetFriends(GetFriendsRequest) returns (GetFriendsResponse);
     rpc RemoveFriend(RemoveFriendRequest) returns (RemoveFriendResponse);
+    
+    rpc CreateOpenApp(CreateAppRequest) returns (CreateAppResponse);
+    rpc GetOpenApp(GetAppRequest) returns (GetAppResponse);
+    rpc ListOpenApps(ListAppsRequest) returns (ListAppsResponse);
+    rpc RegenerateAppSecret(RegenerateSecretRequest) returns (RegenerateSecretResponse);
+    rpc GetApiStats(GetApiStatsRequest) returns (GetApiStatsResponse);
+    
+    rpc CreateWebhook(CreateWebhookRequest) returns (CreateWebhookResponse);
+    
+    rpc GetAnnouncements(GetAnnouncementsRequest) returns (GetAnnouncementsResponse);
+    rpc GetBanners(GetBannersResponse) returns (GetBannersResponse);
+    rpc GetHotTopics(GetHotTopicsResponse) returns (GetHotTopicsResponse);
+    rpc GetRankings(GetRankingsRequest) returns (GetRankingsResponse);
 }
 
 message HealthCheckRequest {}
@@ -1100,4 +1113,185 @@ message AuditLog {
     string ip = 4;
     string details = 5;
     int64 created_at = 6;
+}
+
+message OpenApp {
+    int64 id = 1;
+    string name = 2;
+    string description = 3;
+    string icon = 4;
+    string website = 5;
+    string callback_url = 6;
+    string client_id = 7;
+    string client_secret = 8;
+    repeated string scopes = 9;
+    bool is_active = 10;
+    int64 rate_limit = 11;
+    string owner_id = 12;
+    int64 created_at = 13;
+}
+
+message CreateAppRequest {
+    string access_token = 1;
+    string name = 2;
+    string description = 3;
+    string icon = 4;
+    string website = 5;
+    string callback_url = 6;
+    repeated string scopes = 7;
+}
+
+message CreateAppResponse {
+    int32 code = 1;
+    string message = 2;
+    OpenApp app = 3;
+}
+
+message GetAppRequest {
+    string access_token = 1;
+    int64 app_id = 2;
+}
+
+message GetAppResponse {
+    int32 code = 1;
+    string message = 2;
+    OpenApp app = 3;
+}
+
+message ListAppsRequest {
+    string access_token = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message ListAppsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated OpenApp apps = 3;
+    int32 total = 4;
+}
+
+message RegenerateSecretRequest {
+    string access_token = 1;
+    int64 app_id = 2;
+}
+
+message RegenerateSecretResponse {
+    int32 code = 1;
+    string message = 2;
+    string client_secret = 3;
+}
+
+message ApiStats {
+    int64 total_calls = 1;
+    int64 today_calls = 2;
+    map<string, int64> endpoint_calls = 3;
+    int64 rate_limit_remaining = 4;
+}
+
+message GetApiStatsRequest {
+    string access_token = 1;
+    int64 app_id = 2;
+    string date_range = 3;
+}
+
+message GetApiStatsResponse {
+    int32 code = 1;
+    string message = 2;
+    ApiStats stats = 3;
+}
+
+message Webhook {
+    int64 id = 1;
+    int64 app_id = 2;
+    string endpoint = 3;
+    repeated string events = 4;
+    string secret = 5;
+    bool is_active = 6;
+    int64 created_at = 7;
+}
+
+message CreateWebhookRequest {
+    string access_token = 1;
+    int64 app_id = 2;
+    string endpoint = 3;
+    repeated string events = 4;
+}
+
+message CreateWebhookResponse {
+    int32 code = 1;
+    string message = 2;
+    Webhook webhook = 3;
+}
+
+message Announcement {
+    int64 id = 1;
+    string title = 2;
+    string content = 3;
+    string type = 4;
+    bool is_active = 5;
+    int64 created_at = 6;
+    int64 expire_at = 7;
+}
+
+message Banner {
+    int64 id = 1;
+    string title = 2;
+    string image = 3;
+    string link = 4;
+    int32 order = 5;
+    bool is_active = 6;
+    int64 created_at = 7;
+}
+
+message GetAnnouncementsRequest {
+    int32 page = 1;
+    int32 page_size = 2;
+}
+
+message GetAnnouncementsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Announcement announcements = 3;
+    int32 total = 4;
+}
+
+message GetBannersResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Banner banners = 3;
+}
+
+message HotTopic {
+    int64 id = 1;
+    string name = 2;
+    string icon = 3;
+    int64 post_count = 4;
+    int64 view_count = 5;
+    int64 heat_score = 6;
+}
+
+message GetHotTopicsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated HotTopic topics = 3;
+}
+
+message RankItem {
+    string id = 1;
+    string name = 2;
+    string avatar = 3;
+    int64 score = 4;
+    int32 rank = 5;
+}
+
+message GetRankingsRequest {
+    string type = 1;
+    int32 limit = 2;
+}
+
+message GetRankingsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated RankItem items = 3;
 }

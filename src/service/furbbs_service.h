@@ -229,6 +229,46 @@ public:
     ::trpc::Status RemoveFriend(::trpc::ServerContextPtr context,
                                const ::furbbs::RemoveFriendRequest* request,
                                ::furbbs::RemoveFriendResponse* response) override;
+
+    ::trpc::Status CreateOpenApp(::trpc::ServerContextPtr context,
+                                const ::furbbs::CreateAppRequest* request,
+                                ::furbbs::CreateAppResponse* response) override;
+
+    ::trpc::Status GetOpenApp(::trpc::ServerContextPtr context,
+                             const ::furbbs::GetAppRequest* request,
+                             ::furbbs::GetAppResponse* response) override;
+
+    ::trpc::Status ListOpenApps(::trpc::ServerContextPtr context,
+                               const ::furbbs::ListAppsRequest* request,
+                               ::furbbs::ListAppsResponse* response) override;
+
+    ::trpc::Status RegenerateAppSecret(::trpc::ServerContextPtr context,
+                                      const ::furbbs::RegenerateSecretRequest* request,
+                                      ::furbbs::RegenerateSecretResponse* response) override;
+
+    ::trpc::Status GetApiStats(::trpc::ServerContextPtr context,
+                              const ::furbbs::GetApiStatsRequest* request,
+                              ::furbbs::GetApiStatsResponse* response) override;
+
+    ::trpc::Status CreateWebhook(::trpc::ServerContextPtr context,
+                                const ::furbbs::CreateWebhookRequest* request,
+                                ::furbbs::CreateWebhookResponse* response) override;
+
+    ::trpc::Status GetAnnouncements(::trpc::ServerContextPtr context,
+                                   const ::furbbs::GetAnnouncementsRequest* request,
+                                   ::furbbs::GetAnnouncementsResponse* response) override;
+
+    ::trpc::Status GetBanners(::trpc::ServerContextPtr context,
+                             const ::furbbs::GetBannersResponse* request,
+                             ::furbbs::GetBannersResponse* response) override;
+
+    ::trpc::Status GetHotTopics(::trpc::ServerContextPtr context,
+                               const ::furbbs::GetHotTopicsResponse* request,
+                               ::furbbs::GetHotTopicsResponse* response) override;
+
+    ::trpc::Status GetRankings(::trpc::ServerContextPtr context,
+                              const ::furbbs::GetRankingsRequest* request,
+                              ::furbbs::GetRankingsResponse* response) override;
 };
 
 } // namespace furbbs::service

@@ -2,10 +2,12 @@
 #include <spdlog/spdlog.h>
 #include <atomic>
 #include <ctime>
+#include <sstream>
 #include "../db/database.h"
 #include "../auth/casdoor_auth.h"
 #include "../common/security.h"
 #include "../common/content_filter.h"
+#include "../common/open_platform.h"
 
 namespace furbbs::service {
 
@@ -2546,6 +2548,504 @@ static const int64_t SERVER_START_TIME = std::chrono::duration_cast<std::chrono:
         
         response->set_code(200);
         response->set_message("Friend removed");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::CreateOpenApp(::trpc::ServerContextPtr context,
+                                               const ::furbbs::CreateAppRequest* request,
+                                               ::furbbs::CreateAppResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        std::string client_id = furbbs::common::ApiKeyGenerator::GenerateClientId();
+        std::string client_secret = furbbs::common::ApiKeyGenerator::GenerateClientSecret();
+
+        int64_t app_id = db::Database::Instance().Execute([&](pqxx::work& txn) {
+            std::vector<std::string> scopes_vec;
+            for (const auto& s : request->scopes()) scopes_vec.push_back(s);
+            
+            auto result = txn.exec_params(R"(
+                INSERT INTO open_apps (owner_id, name, description, icon, website, callback_url, client_id, client_secret, scopes)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                RETURNING id
+            )", user_opt->id, request->name(), request->description(), 
+                request->icon().empty() ? nullptr : request->icon(),
+                request->website().empty() ? nullptr : request->website(),
+                request->callback_url().empty() ? nullptr : request->callback_url(),
+                client_id, client_secret, scopes_vec);
+            
+            return result[0][0].as<int64_t>();
+        });
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec_params(R"(
+                SELECT id, name, description, icon, website, callback_url, 
+                       client_id, client_secret, scopes, is_active, rate_limit, created_at
+                FROM open_apps WHERE id = $1
+            )", app_id);
+
+            const auto& row = result[0];
+            auto* app = response->mutable_app();
+            app->set_id(row[0].as<int64_t>());
+            app->set_name(row[1].as<std::string>());
+            if (!row[2].is_null()) app->set_description(row[2].as<std::string>());
+            if (!row[3].is_null()) app->set_icon(row[3].as<std::string>());
+            if (!row[4].is_null()) app->set_website(row[4].as<std::string>());
+            if (!row[5].is_null()) app->set_callback_url(row[5].as<std::string>());
+            app->set_client_id(row[6].as<std::string>());
+            app->set_client_secret(row[7].as<std::string>());
+            
+            auto scopes = row[8].as_array();
+            for (size_t i = 0; i < scopes.size(); i++) {
+                if (!scopes[i].is_null()) {
+                    app->add_scopes(scopes[i].as<std::string>());
+                }
+            }
+            
+            app->set_is_active(row[9].as<bool>());
+            app->set_rate_limit(row[10].as<int64_t>());
+            app->set_owner_id(user_opt->id);
+            app->set_created_at(row[11].as<int64_t>());
+        });
+
+        furbbs::common::AuditLogger::Instance().Log(user_opt->id, "CREATE_APP", "", "App ID: " + std::to_string(app_id));
+
+        response->set_code(200);
+        response->set_message("Open app created successfully");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetOpenApp(::trpc::ServerContextPtr context,
+                                            const ::furbbs::GetAppRequest* request,
+                                            ::furbbs::GetAppResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec_params(R"(
+                SELECT id, name, description, icon, website, callback_url, 
+                       client_id, client_secret, scopes, is_active, rate_limit, created_at
+                FROM open_apps WHERE id = $1 AND owner_id = $2
+            )", request->app_id(), user_opt->id);
+
+            if (result.empty()) {
+                response->set_code(404);
+                response->set_message("App not found");
+                return;
+            }
+
+            const auto& row = result[0];
+            auto* app = response->mutable_app();
+            app->set_id(row[0].as<int64_t>());
+            app->set_name(row[1].as<std::string>());
+            if (!row[2].is_null()) app->set_description(row[2].as<std::string>());
+            if (!row[3].is_null()) app->set_icon(row[3].as<std::string>());
+            if (!row[4].is_null()) app->set_website(row[4].as<std::string>());
+            if (!row[5].is_null()) app->set_callback_url(row[5].as<std::string>());
+            app->set_client_id(row[6].as<std::string>());
+            app->set_client_secret(row[7].as<std::string>());
+            
+            auto scopes = row[8].as_array();
+            for (size_t i = 0; i < scopes.size(); i++) {
+                if (!scopes[i].is_null()) {
+                    app->add_scopes(scopes[i].as<std::string>());
+                }
+            }
+            
+            app->set_is_active(row[9].as<bool>());
+            app->set_rate_limit(row[10].as<int64_t>());
+            app->set_owner_id(user_opt->id);
+            app->set_created_at(row[11].as<int64_t>());
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::ListOpenApps(::trpc::ServerContextPtr context,
+                                              const ::furbbs::ListAppsRequest* request,
+                                              ::furbbs::ListAppsResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        int32_t page = request->page() > 0 ? request->page() : 1;
+        int32_t page_size = request->page_size() > 0 ? request->page_size() : 20;
+        int32_t offset = (page - 1) * page_size;
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto count_result = txn.exec_params("SELECT COUNT(*) FROM open_apps WHERE owner_id = $1", user_opt->id);
+            response->set_total(count_result[0][0].as<int32_t>());
+
+            auto result = txn.exec_params(R"(
+                SELECT id, name, description, icon, website, callback_url, 
+                       client_id, is_active, rate_limit, created_at
+                FROM open_apps WHERE owner_id = $1
+                ORDER BY created_at DESC
+                LIMIT $2 OFFSET $3
+            )", user_opt->id, page_size, offset);
+
+            for (const auto& row : result) {
+                auto* app = response->add_apps();
+                app->set_id(row[0].as<int64_t>());
+                app->set_name(row[1].as<std::string>());
+                if (!row[2].is_null()) app->set_description(row[2].as<std::string>());
+                if (!row[3].is_null()) app->set_icon(row[3].as<std::string>());
+                if (!row[4].is_null()) app->set_website(row[4].as<std::string>());
+                if (!row[5].is_null()) app->set_callback_url(row[5].as<std::string>());
+                app->set_client_id(row[6].as<std::string>());
+                app->set_is_active(row[7].as<bool>());
+                app->set_rate_limit(row[8].as<int64_t>());
+                app->set_owner_id(user_opt->id);
+                app->set_created_at(row[9].as<int64_t>());
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::RegenerateAppSecret(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::RegenerateSecretRequest* request,
+                                                     ::furbbs::RegenerateSecretResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        std::string new_secret = furbbs::common::ApiKeyGenerator::GenerateClientSecret();
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec_params(R"(
+                UPDATE open_apps SET client_secret = $1 
+                WHERE id = $2 AND owner_id = $3
+                RETURNING id
+            )", new_secret, request->app_id(), user_opt->id);
+
+            if (result.empty()) {
+                response->set_code(404);
+                response->set_message("App not found");
+                return;
+            }
+        });
+
+        furbbs::common::AuditLogger::Instance().Log(user_opt->id, "REGENERATE_SECRET", "", "App ID: " + std::to_string(request->app_id()));
+
+        response->set_code(200);
+        response->set_message("Secret regenerated");
+        response->set_client_secret(new_secret);
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetApiStats(::trpc::ServerContextPtr context,
+                                             const ::furbbs::GetApiStatsRequest* request,
+                                             ::furbbs::GetApiStatsResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto app_result = txn.exec_params(R"(
+                SELECT client_id, rate_limit FROM open_apps WHERE id = $1 AND owner_id = $2
+            )", request->app_id(), user_opt->id);
+
+            if (app_result.empty()) {
+                response->set_code(404);
+                response->set_message("App not found");
+                return;
+            }
+
+            std::string client_id = app_result[0][0].as<std::string>();
+            int64_t rate_limit = app_result[0][1].as<int64_t>();
+
+            auto* stats = response->mutable_stats();
+            stats->set_today_calls(furbbs::common::RateLimiter::Instance().GetTodayCalls(client_id));
+            stats->set_rate_limit_remaining(furbbs::common::RateLimiter::Instance().GetRemaining(client_id, rate_limit));
+
+            auto total_result = txn.exec_params(R"(
+                SELECT COALESCE(SUM(call_count), 0) FROM api_stats WHERE client_id = $1
+            )", client_id);
+            stats->set_total_calls(total_result[0][0].as<int64_t>());
+
+            auto endpoint_result = txn.exec_params(R"(
+                SELECT endpoint, SUM(call_count) FROM api_stats 
+                WHERE client_id = $1 AND call_date = CURRENT_DATE
+                GROUP BY endpoint
+            )", client_id);
+
+            for (const auto& row : endpoint_result) {
+                (*stats->mutable_endpoint_calls())[row[0].as<std::string>()] = row[1].as<int64_t>();
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::CreateWebhook(::trpc::ServerContextPtr context,
+                                               const ::furbbs::CreateWebhookRequest* request,
+                                               ::furbbs::CreateWebhookResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        std::string secret = furbbs::common::ApiKeyGenerator::GenerateWebhookSecret();
+        std::vector<std::string> events_vec;
+        for (const auto& e : request->events()) events_vec.push_back(e);
+
+        int64_t webhook_id = db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec_params(R"(
+                INSERT INTO webhooks (app_id, endpoint, events, secret)
+                SELECT $1, $2, $3, $4
+                FROM open_apps WHERE id = $1 AND owner_id = $5
+                RETURNING id
+            )", request->app_id(), request->endpoint(), events_vec, secret, user_opt->id);
+
+            if (result.empty()) {
+                throw std::runtime_error("App not found or no permission");
+            }
+            return result[0][0].as<int64_t>();
+        });
+
+        furbbs::common::WebhookDispatcher::Instance().AddWebhook(request->app_id(), request->endpoint(), events_vec, secret);
+
+        auto* webhook = response->mutable_webhook();
+        webhook->set_id(webhook_id);
+        webhook->set_app_id(request->app_id());
+        webhook->set_endpoint(request->endpoint());
+        for (const auto& e : events_vec) webhook->add_events(e);
+        webhook->set_secret(secret);
+        webhook->set_is_active(true);
+
+        furbbs::common::AuditLogger::Instance().Log(user_opt->id, "CREATE_WEBHOOK", "", "App ID: " + std::to_string(request->app_id()));
+
+        response->set_code(200);
+        response->set_message("Webhook created successfully");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetAnnouncements(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::GetAnnouncementsRequest* request,
+                                                  ::furbbs::GetAnnouncementsResponse* response) {
+    try {
+        int32_t page = request->page() > 0 ? request->page() : 1;
+        int32_t page_size = request->page_size() > 0 ? request->page_size() : 10;
+        int32_t offset = (page - 1) * page_size;
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto count_result = txn.exec("SELECT COUNT(*) FROM announcements WHERE is_active = TRUE");
+            response->set_total(count_result[0][0].as<int32_t>());
+
+            auto result = txn.exec_params(R"(
+                SELECT id, title, content, type, is_active, created_at, expire_at
+                FROM announcements WHERE is_active = TRUE
+                ORDER BY created_at DESC
+                LIMIT $1 OFFSET $2
+            )", page_size, offset);
+
+            for (const auto& row : result) {
+                auto* ann = response->add_announcements();
+                ann->set_id(row[0].as<int64_t>());
+                ann->set_title(row[1].as<std::string>());
+                if (!row[2].is_null()) ann->set_content(row[2].as<std::string>());
+                ann->set_type(row[3].as<std::string>());
+                ann->set_is_active(row[4].as<bool>());
+                ann->set_created_at(row[5].as<int64_t>());
+                if (!row[6].is_null()) ann->set_expire_at(row[6].as<int64_t>());
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetBanners(::trpc::ServerContextPtr context,
+                                            const ::furbbs::GetBannersResponse* request,
+                                            ::furbbs::GetBannersResponse* response) {
+    try {
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec(R"(
+                SELECT id, title, image, link, "order", is_active, created_at
+                FROM banners WHERE is_active = TRUE
+                ORDER BY "order" ASC
+            )");
+
+            for (const auto& row : result) {
+                auto* banner = response->add_banners();
+                banner->set_id(row[0].as<int64_t>());
+                if (!row[1].is_null()) banner->set_title(row[1].as<std::string>());
+                banner->set_image(row[2].as<std::string>());
+                if (!row[3].is_null()) banner->set_link(row[3].as<std::string>());
+                banner->set_order(row[4].as<int32_t>());
+                banner->set_is_active(row[5].as<bool>());
+                banner->set_created_at(row[6].as<int64_t>());
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetHotTopics(::trpc::ServerContextPtr context,
+                                              const ::furbbs::GetHotTopicsResponse* request,
+                                              ::furbbs::GetHotTopicsResponse* response) {
+    try {
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec(R"(
+                SELECT t.id, t.name, t.icon, COUNT(DISTINCT pt.post_id) as post_count,
+                       SUM(p.view_count) as view_count,
+                       (COUNT(DISTINCT pt.post_id) * 10 + SUM(p.view_count) * 0.1) as heat
+                FROM tags t
+                LEFT JOIN post_tags pt ON t.id = pt.tag_id
+                LEFT JOIN posts p ON pt.post_id = p.id
+                WHERE p.created_at > EXTRACT(EPOCH FROM NOW() - INTERVAL '7 days') * 1000
+                GROUP BY t.id, t.name, t.icon
+                HAVING COUNT(DISTINCT pt.post_id) > 0
+                ORDER BY heat DESC
+                LIMIT 20
+            )");
+
+            int rank = 1;
+            for (const auto& row : result) {
+                auto* topic = response->add_topics();
+                topic->set_id(row[0].as<int64_t>());
+                topic->set_name(row[1].as<std::string>());
+                if (!row[2].is_null()) topic->set_icon(row[2].as<std::string>());
+                topic->set_post_count(row[3].as<int64_t>());
+                topic->set_view_count(row[4].as<int64_t>());
+                topic->set_heat_score(row[5].as<int64_t>());
+                rank++;
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetRankings(::trpc::ServerContextPtr context,
+                                             const ::furbbs::GetRankingsRequest* request,
+                                             ::furbbs::GetRankingsResponse* response) {
+    try {
+        int32_t limit = request->limit() > 0 ? request->limit() : 10;
+        std::string type = request->type().empty() ? "points" : request->type();
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            pqxx::result result;
+
+            if (type == "points") {
+                result = txn.exec_params(R"(
+                    SELECT up.user_id, u.name, u.display_name, u.avatar, up.points
+                    FROM user_points up
+                    JOIN users u ON up.user_id = u.id
+                    ORDER BY up.points DESC
+                    LIMIT $1
+                )", limit);
+            } else if (type == "posts") {
+                result = txn.exec_params(R"(
+                    SELECT p.author_id, u.name, u.display_name, u.avatar, COUNT(*) as cnt
+                    FROM posts p
+                    JOIN users u ON p.author_id = u.id
+                    GROUP BY p.author_id, u.name, u.display_name, u.avatar
+                    ORDER BY cnt DESC
+                    LIMIT $1
+                )", limit);
+            } else if (type == "followers") {
+                result = txn.exec_params(R"(
+                    SELECT f.following_id, u.name, u.display_name, u.avatar, COUNT(*) as cnt
+                    FROM follows f
+                    JOIN users u ON f.following_id = u.id
+                    GROUP BY f.following_id, u.name, u.display_name, u.avatar
+                    ORDER BY cnt DESC
+                    LIMIT $1
+                )", limit);
+            }
+
+            int rank = 1;
+            for (const auto& row : result) {
+                auto* item = response->add_items();
+                item->set_id(row[0].as<std::string>());
+                item->set_name(row[1].as<std::string>());
+                if (!row[2].is_null()) item->set_name(row[2].as<std::string>());
+                if (!row[3].is_null()) item->set_avatar(row[3].as<std::string>());
+                item->set_score(row[4].as<int64_t>());
+                item->set_rank(rank);
+                rank++;
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
     } catch (const std::exception& e) {
         response->set_code(500);
         response->set_message(e.what());
