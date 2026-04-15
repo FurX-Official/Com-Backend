@@ -1,170 +1,66 @@
-#include "base_controller.h"
-#include "../service_impl/user_service.h"
-#include "../auth/casdoor_auth.h"
-#include <furbbs.pb.h>
+#include "controller/common.h"
+#include "service_impl/user_service.h"
 
 namespace furbbs::controller {
 
-::trpc::Status GetUserInfo(::trpc::ServerContextPtr context,
-                           const ::furbbs::GetUserInfoRequest* request,
-                           ::furbbs::GetUserInfoResponse* response) {
-    auto auth = BaseController::VerifyToken(request->access_token());
-    auto info = service::UserService::Instance().GetUserInfo(
-        auth.user_id, request->user_id());
-    
-    auto* out = response->mutable_user();
-    out->set_id(info.id);
-    out->set_username(info.username);
-    out->set_avatar(info.avatar);
-    out->set_signature(info.signature);
-    out->set_points(info.points);
-    out->set_level(info.level);
-    out->set_gender(info.gender);
-    out->set_created_at(info.created_at);
-    
-    BaseController::SetResponse(response, 200, "Success");
-    return ::trpc::kSuccStatus;
+trpc::Status UserController::DailySignIn(::trpc::ServerContextPtr,
+                                          const ::furbbs::DailySignInRequest* request,
+                                          ::furbbs::DailySignInResponse* response) {
+    int32_t streak = 0;
+    bool is_continuous = false;
+    int32_t new_level = 0;
+
+    int32_t points = service::UserService::Instance().DailySignIn(
+        request->token(), streak, is_continuous, new_level);
+
+    response->set_earned_points(points);
+    response->set_current_streak(streak);
+    response->set_is_continuous(is_continuous);
+    response->set_new_level(new_level);
+    response->set_success(points > 0);
+    return trpc::kSuccStatus;
 }
 
-::trpc::Status UpdateUserProfile(::trpc::ServerContextPtr context,
-                                 const ::furbbs::UpdateProfileRequest* request,
-                                 ::furbbs::UpdateProfileResponse* response) {
-    auto auth = BaseController::VerifyToken(request->access_token());
-    if (!auth.valid) {
-        BaseController::SetResponse(response, 401, "Unauthorized");
-        return ::trpc::kSuccStatus;
+trpc::Status UserController::GetAchievements(::trpc::ServerContextPtr,
+                                              const ::furbbs::GetAchievementsRequest* request,
+                                              ::furbbs::GetAchievementsResponse* response) {
+    auto list = service::UserService::Instance().GetAchievements(request->user_id());
+    for (const auto& item : list) {
+        auto* a = response->add_achievements();
+        a->set_id(item.id);
+        a->set_name(item.name);
+        a->set_icon(item.icon);
+        a->set_description(item.description);
+        a->set_points_reward(item.points_reward);
+        a->set_is_unlocked(item.is_unlocked);
+        a->set_unlocked_at(item.unlocked_at);
     }
-
-    service::UserProfileEntity profile;
-    profile.signature = request->signature();
-    profile.gender = request->gender();
-    profile.location = request->location();
-    profile.birthday = request->birthday();
-    profile.website = request->website();
-
-    bool success = service::UserService::Instance().UpdateProfile(
-        auth.user_id, profile);
-    
-    BaseController::SetResponse(response, success ? 200 : 400,
-                               success ? "Updated" : "Failed");
-    return ::trpc::kSuccStatus;
+    return trpc::kSuccStatus;
 }
 
-::trpc::Status GetUserStats(::trpc::ServerContextPtr context,
-                            const ::furbbs::GetUserStatsRequest* request,
-                            ::furbbs::GetUserStatsResponse* response) {
+trpc::Status UserController::UnlockAchievement(::trpc::ServerContextPtr,
+                                                const ::furbbs::UnlockAchievementRequest* request,
+                                                ::furbbs::UnlockAchievementResponse* response) {
+    int32_t points_reward = 0;
+    bool success = service::UserService::Instance().UnlockAchievement(
+        request->token(), request->achievement_id(), points_reward);
+
+    response->set_success(success);
+    response->set_points_reward(points_reward);
+    return trpc::kSuccStatus;
+}
+
+trpc::Status UserController::GetUserStats(::trpc::ServerContextPtr,
+                                           const ::furbbs::GetUserStatsRequest* request,
+                                           ::furbbs::GetUserStatsResponse* response) {
     auto stats = service::UserService::Instance().GetUserStats(request->user_id());
-    
-    response->set_post_count(stats.post_count);
-    response->set_comment_count(stats.comment_count);
-    response->set_follower_count(stats.follower_count);
-    response->set_following_count(stats.following_count);
-    response->set_like_received(stats.like_received);
-    
-    BaseController::SetResponse(response, 200, "Success");
-    return ::trpc::kSuccStatus;
-}
-
-::trpc::Status SearchUsers(::trpc::ServerContextPtr context,
-                           const ::furbbs::SearchUsersRequest* request,
-                           ::furbbs::SearchUsersResponse* response) {
-    int total = 0;
-    auto users = service::UserService::Instance().SearchUsers(
-        request->keyword(), request->page(), request->page_size(), total);
-    
-    for (const auto& u : users) {
-        auto* out = response->add_users();
-        out->set_id(u.id);
-        out->set_username(u.username);
-        out->set_avatar(u.avatar);
-    }
-    response->set_total(total);
-    BaseController::SetResponse(response, 200, "Success");
-    return ::trpc::kSuccStatus;
-}
-
-::trpc::Status GetFursonaList(::trpc::ServerContextPtr context,
-                              const ::furbbs::GetFursonaListRequest* request,
-                              ::furbbs::GetFursonaListResponse* response) {
-    int total = 0;
-    auto fursonas = service::UserService::Instance().GetUserFursonas(
-        request->user_id(), request->page(), request->page_size(), total);
-    
-    for (const auto& f : fursonas) {
-        auto* out = response->add_fursonas();
-        out->set_id(f.id);
-        out->set_name(f.name);
-        out->set_species(f.species);
-        out->set_avatar(f.avatar);
-    }
-    response->set_total(total);
-    BaseController::SetResponse(response, 200, "Success");
-    return ::trpc::kSuccStatus;
-}
-
-::trpc::Status CreateFursona(::trpc::ServerContextPtr context,
-                             const ::furbbs::CreateFursonaRequest* request,
-                             ::furbbs::CreateFursonaResponse* response) {
-    auto auth = BaseController::VerifyToken(request->access_token());
-    if (!auth.valid) {
-        BaseController::SetResponse(response, 401, "Unauthorized");
-        return ::trpc::kSuccStatus;
-    }
-
-    service::FursonaEntity fursona;
-    fursona.name = request->name();
-    fursona.species = request->species();
-    fursona.gender = request->gender();
-    fursona.description = request->description();
-    fursona.avatar = request->avatar();
-    fursona.ref_sheet = request->ref_sheet();
-
-    int64_t id = service::UserService::Instance().CreateFursona(auth.user_id, fursona);
-    
-    response->set_fursona_id(id);
-    BaseController::SetResponse(response, id > 0 ? 200 : 400,
-                               id > 0 ? "Created" : "Failed");
-    return ::trpc::kSuccStatus;
-}
-
-::trpc::Status UpdateFursona(::trpc::ServerContextPtr context,
-                             const ::furbbs::UpdateFursonaRequest* request,
-                             ::furbbs::UpdateFursonaResponse* response) {
-    auto auth = BaseController::VerifyToken(request->access_token());
-    if (!auth.valid) {
-        BaseController::SetResponse(response, 401, "Unauthorized");
-        return ::trpc::kSuccStatus;
-    }
-
-    service::FursonaEntity fursona;
-    fursona.name = request->name();
-    fursona.species = request->species();
-    fursona.description = request->description();
-    fursona.avatar = request->avatar();
-
-    bool success = service::UserService::Instance().UpdateFursona(
-        auth.user_id, request->fursona_id(), fursona);
-    
-    BaseController::SetResponse(response, success ? 200 : 403,
-                               success ? "Updated" : "Permission denied");
-    return ::trpc::kSuccStatus;
-}
-
-::trpc::Status DeleteFursona(::trpc::ServerContextPtr context,
-                             const ::furbbs::DeleteFursonaRequest* request,
-                             ::furbbs::DeleteFursonaResponse* response) {
-    auto auth = BaseController::VerifyToken(request->access_token());
-    if (!auth.valid) {
-        BaseController::SetResponse(response, 401, "Unauthorized");
-        return ::trpc::kSuccStatus;
-    }
-
-    bool success = service::UserService::Instance().DeleteFursona(
-        auth.user_id, request->fursona_id());
-    
-    BaseController::SetResponse(response, success ? 200 : 403,
-                               success ? "Deleted" : "Permission denied");
-    return ::trpc::kSuccStatus;
+    response->set_points(stats.points);
+    response->set_level(stats.level);
+    response->set_posts_count(stats.posts_count);
+    response->set_comments_count(stats.comments_count);
+    response->set_sign_in_streak(stats.sign_in_streak);
+    response->set_last_sign_in(stats.last_sign_in);
+    return trpc::kSuccStatus;
 }
 
 } // namespace furbbs::controller

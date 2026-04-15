@@ -14,6 +14,24 @@ struct UserStatsEntity {
     int32_t posts_count = 0;
     int32_t comments_count = 0;
     int32_t level = 1;
+    int32_t sign_in_streak = 0;
+    int64_t last_sign_in = 0;
+};
+
+struct AchievementEntity {
+    int32_t id = 0;
+    std::string name;
+    std::string icon;
+    std::string description;
+    int32_t points_reward = 0;
+    bool is_unlocked = false;
+    int64_t unlocked_at = 0;
+};
+
+struct SignInRewardEntity {
+    int32_t day = 0;
+    int32_t points = 0;
+    std::string special_badge;
 };
 
 struct UserMembershipEntity {
@@ -37,6 +55,14 @@ public:
 
     void UnlockTitle(const std::string& user_id, int32_t title_id);
     void UnlockAvatarFrame(const std::string& user_id, int32_t frame_id);
+
+    int32_t DailySignIn(const std::string& user_id, int32_t& out_streak, bool& out_is_continuous);
+
+    std::vector<AchievementEntity> GetAchievements(const std::string& user_id);
+
+    bool CheckAndUnlockAchievement(const std::string& user_id, int32_t achievement_id);
+
+    void UpdateLevel(const std::string& user_id);
 
 private:
     UserRepository() = default;

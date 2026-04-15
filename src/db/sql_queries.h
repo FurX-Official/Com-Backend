@@ -1901,3 +1901,87 @@ const std::string REDEEM_CARD_LIST_FULL = R"(
     ORDER BY created_at DESC
     LIMIT $4 OFFSET $5
 )";
+
+const std::string USER_SIGN_IN = R"(
+    INSERT INTO user_stats (user_id, points, sign_in_streak, last_sign_in, level)
+    VALUES ($1, $2, 1, $3, 1)
+    ON CONFLICT (user_id) DO UPDATE SET
+        points = user_stats.points + $2,
+        sign_in_streak = CASE WHEN user_stats.last_sign_in >= $4 THEN user_stats.sign_in_streak + 1 ELSE 1 END,
+        last_sign_in = $3
+    RETURNING sign_in_streak, CASE WHEN user_stats.last_sign_in >= $4 THEN TRUE ELSE FALSE END
+)";
+
+const std::string USER_GET_ACHIEVEMENTS = R"(
+    SELECT a.id, a.name, a.icon, a.description, a.points_reward,
+           CASE WHEN ua.unlocked_at IS NOT NULL THEN TRUE ELSE FALSE END,
+           COALESCE(ua.unlocked_at, 0)
+    FROM achievements a
+    LEFT JOIN user_achievements ua ON a.id = ua.achievement_id AND ua.user_id = $1
+    ORDER BY a.id ASC
+)";
+
+const std::string USER_UNLOCK_ACHIEVEMENT = R"(
+    INSERT INTO user_achievements (user_id, achievement_id, unlocked_at)
+    SELECT $1, a.id, $3 FROM achievements a
+    WHERE a.id = $2 AND NOT EXISTS (
+        SELECT 1 FROM user_achievements WHERE user_id = $1 AND achievement_id = $2
+    )
+    RETURNING achievement_id
+)";
+
+const std::string USER_UPDATE_LEVEL = R"(
+    UPDATE user_stats SET level = FLOOR(1 + LOG(2, points / 100 + 1)) WHERE user_id = $1
+)";
+
+const std::string MESSAGE_SEND = R"(
+    INSERT INTO private_messages (conversation_id, sender_id, receiver_id,
+                                   content, message_type, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING id
+)";
+
+const std::string MESSAGE_GET_HISTORY = R"(
+    SELECT id, conversation_id, sender_id, receiver_id,
+           content, message_type, is_read, created_at
+    FROM private_messages
+    WHERE conversation_id = $1 AND created_at < $2
+    ORDER BY created_at DESC
+    LIMIT $3
+)";
+
+const std::string MESSAGE_GET_CONVERSATIONS = R"(
+    WITH last_msgs AS (
+        SELECT DISTINCT ON (conversation_id)
+            conversation_id,
+            CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END as peer_id,
+            content, created_at, is_read
+        FROM private_messages
+        WHERE sender_id = $1 OR receiver_id = $1
+        ORDER BY conversation_id, created_at DESC
+    )
+    SELECT lm.conversation_id, lm.peer_id, u.username, u.avatar,
+           lm.content, lm.created_at,
+           (SELECT COUNT(*) FROM private_messages
+            WHERE conversation_id = lm.conversation_id
+              AND receiver_id = $1 AND NOT is_read)
+    FROM last_msgs lm
+    LEFT JOIN users u ON lm.peer_id = u.id
+    ORDER BY lm.created_at DESC
+)";
+
+const std::string MESSAGE_MARK_READ = R"(
+    UPDATE private_messages SET is_read = TRUE
+    WHERE conversation_id = $1 AND receiver_id = $2 AND NOT is_read
+    RETURNING COUNT(*)
+)";
+
+const std::string MESSAGE_DELETE = R"(
+    DELETE FROM private_messages
+    WHERE id = $1 AND (sender_id = $2 OR receiver_id = $2)
+)";
+
+const std::string MESSAGE_GET_UNREAD_COUNT = R"(
+    SELECT COUNT(*) FROM private_messages
+    WHERE receiver_id = $1 AND NOT is_read
+)";
