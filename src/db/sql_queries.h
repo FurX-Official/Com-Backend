@@ -1266,6 +1266,365 @@ const std::string STATS_GET = R"(
     SELECT * FROM post_share_stats WHERE post_id = $1
 )";
 
+const std::string MOD_ADD = R"(
+    INSERT INTO section_moderators (section_id, user_id, assigned_by,
+    permission_level, can_manage_posts, can_manage_comments,
+    can_manage_users, can_manage_reports)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    ON CONFLICT DO NOTHING
+)";
+const std::string MOD_REMOVE = R"(
+    DELETE FROM section_moderators WHERE section_id = $1 AND user_id = $2
+)";
+const std::string MOD_GET_BY_USER = R"(
+    SELECT * FROM section_moderators WHERE user_id = $1
+)";
+const std::string MOD_CHECK_PERM = R"(
+    SELECT 1 FROM section_moderators
+    WHERE user_id = $1 AND section_id = $2 AND can_manage_posts = true
+)";
+
+const std::string PUNISH_CREATE = R"(
+    INSERT INTO user_punishments (user_id, punishment_type, reason,
+    duration, points_deducted, executed_by, expires_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+)";
+const std::string PUNISH_GET_ACTIVE = R"(
+    SELECT * FROM user_punishments
+    WHERE user_id = $1 AND is_active = true
+    AND (expires_at IS NULL OR expires_at > EXTRACT(EPOCH FROM NOW()) * 1000)
+    ORDER BY created_at DESC
+)";
+const std::string PUNISH_EXPIRE = R"(
+    UPDATE user_punishments SET is_active = false
+    WHERE expires_at <= EXTRACT(EPOCH FROM NOW()) * 1000
+)";
+const std::string PUNISH_HISTORY = R"(
+    INSERT INTO punishment_records (user_id, punishment_type, reason,
+    points_deducted, executed_by)
+    VALUES ($1, $2, $3, $4, $5)
+)";
+
+const std::string POLL_CREATE = R"(
+    INSERT INTO post_polls (post_id, question, options, is_multiple, end_at)
+    VALUES ($1, $2, $3, $4, $5)
+)";
+const std::string POLL_GET = R"(
+    SELECT * FROM post_polls WHERE post_id = $1
+)";
+const std::string POLL_VOTE = R"(
+    INSERT INTO poll_votes (poll_id, user_id, option_index)
+    VALUES ($1, $2, $3) ON CONFLICT DO NOTHING;
+    UPDATE post_polls SET vote_counts[$4] = vote_counts[$4] + 1
+    WHERE post_id = $1
+)";
+const std::string POLL_CHECK_VOTE = R"(
+    SELECT 1 FROM poll_votes WHERE poll_id = $1 AND user_id = $2
+)";
+
+const std::string HOT_UPDATE_SCORE = R"(
+    INSERT INTO hot_scores (post_id, hot_score, view_weight,
+    like_weight, comment_weight, last_updated_at)
+    VALUES ($1, $2, $3, $4, $5, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT (post_id) DO UPDATE SET
+    hot_score = $2, view_weight = $3, like_weight = $4,
+    comment_weight = $5, last_updated_at = EXTRACT(EPOCH FROM NOW()) * 1000
+)";
+const std::string HOT_GET_TOP = R"(
+    SELECT post_id FROM hot_scores
+    ORDER BY hot_score DESC LIMIT $1 OFFSET $2
+)";
+
+const std::string FEED_SETTINGS_GET = R"(
+    SELECT * FROM user_feed_settings WHERE user_id = $1
+)";
+const std::string FEED_SETTINGS_SET = R"(
+    INSERT INTO user_feed_settings (user_id, feed_type, include_sections, exclude_tags)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (user_id) DO UPDATE SET
+    feed_type = $2, include_sections = $3, exclude_tags = $4,
+    updated_at = EXTRACT(EPOCH FROM NOW()) * 1000
+)";
+
+const std::string WATERMARK_GET = R"(
+    SELECT * FROM media_watermarks WHERE user_id = $1
+)";
+const std::string WATERMARK_SET = R"(
+    INSERT INTO media_watermarks (user_id, watermark_text,
+    watermark_position, opacity, is_enabled)
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (user_id) DO UPDATE SET
+    watermark_text = $2, watermark_position = $3,
+    opacity = $4, is_enabled = $5
+)";
+
+const std::string RECOMMEND_LOG = R"(
+    INSERT INTO recommendation_logs (user_id, post_id, algorithm, action, score)
+    VALUES ($1, $2, $3, $4, $5)
+)";
+
 } // namespace furbbs::db::sql
 
 #endif // FURBBS_DB_SQL_QUERIES_H
+
+const std::string COMMENT_LIKE_ADD = R"(
+    INSERT INTO comment_likes (comment_id, user_id)
+    VALUES ($1, $2) ON CONFLICT DO NOTHING
+)";
+
+const std::string COMMENT_LIKE_REMOVE = R"(
+    DELETE FROM comment_likes WHERE comment_id = $1 AND user_id = $2
+)";
+
+const std::string COMMENT_LIKE_COUNT = R"(
+    SELECT COUNT(*) FROM comment_likes WHERE comment_id = $1
+)";
+
+const std::string COMMENT_LIKE_HAS = R"(
+    SELECT 1 FROM comment_likes WHERE comment_id = $1 AND user_id = $2 LIMIT 1
+)";
+
+const std::string POST_APPRECIATION_ADD = R"(
+    INSERT INTO post_appreciations (post_id, user_id, score, comment)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (post_id, user_id) DO UPDATE SET score = $3, comment = $4
+)";
+
+const std::string POST_APPRECIATION_GET = R"(
+    SELECT pa.id, pa.post_id, pa.user_id, u.username, pa.score,
+           pa.comment, pa.created_at
+    FROM post_appreciations pa
+    JOIN users u ON pa.user_id = u.id
+    WHERE pa.post_id = $1
+    ORDER BY pa.created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string POST_APPRECIATION_STATS = R"(
+    SELECT COUNT(*), AVG(score) FROM post_appreciations WHERE post_id = $1
+)";
+
+const std::string SHARE_RECORD_ADD = R"(
+    INSERT INTO share_records (post_id, user_id, platform)
+    VALUES ($1, $2, $3)
+)";
+
+const std::string SHARE_RECORD_COUNT = R"(
+    SELECT COUNT(*) FROM share_records WHERE post_id = $1
+)";
+
+const std::string SHARE_PLATFORM_STATS = R"(
+    SELECT platform, COUNT(*) FROM share_records 
+    WHERE post_id = $1 GROUP BY platform
+)";
+
+const std::string VISIT_RECORD_ADD = R"(
+    INSERT INTO visit_records (visitor_id, target_user_id, post_id,
+                               ip_address, user_agent, duration)
+    VALUES ($1, $2, $3, $4, $5, $6)
+)";
+
+const std::string VISIT_GET_PROFILE_VISITORS = R"(
+    SELECT DISTINCT ON (visitor_id) v.visitor_id, u.username, u.avatar,
+           MAX(v.visited_at) as last_visit, COUNT(*) as visit_count
+    FROM visit_records v
+    JOIN users u ON v.visitor_id = u.id
+    WHERE v.target_user_id = $1 AND v.visitor_id IS NOT NULL
+    GROUP BY v.visitor_id, u.username, u.avatar
+    ORDER BY last_visit DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string USER_TAG_ADD = R"(
+    INSERT INTO user_tags (user_id, tagged_user_id, tag_name, tag_color)
+    VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING
+)";
+
+const std::string USER_TAG_REMOVE = R"(
+    DELETE FROM user_tags WHERE user_id = $1 AND tagged_user_id = $2 AND tag_name = $3
+)";
+
+const std::string USER_TAG_GET = R"(
+    SELECT tag_name, tag_color FROM user_tags 
+    WHERE user_id = $1 AND tagged_user_id = $2
+    ORDER BY id
+)";
+
+const std::string READING_PROGRESS_SET = R"(
+    INSERT INTO reading_progress (user_id, post_id, progress_percent,
+                                  last_read_position, total_words,
+                                  last_read_at, is_completed)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ON CONFLICT (user_id, post_id) DO UPDATE SET
+    progress_percent = $3, last_read_position = $4,
+    last_read_at = $6, is_completed = $7
+)";
+
+const std::string READING_PROGRESS_GET = R"(
+    SELECT progress_percent, last_read_position, total_words, is_completed
+    FROM reading_progress WHERE user_id = $1 AND post_id = $2
+)";
+
+const std::string READING_HISTORY = R"(
+    SELECT rp.post_id, p.title, rp.last_read_at, rp.progress_percent
+    FROM reading_progress rp
+    JOIN posts p ON rp.post_id = p.id
+    WHERE rp.user_id = $1
+    ORDER BY rp.last_read_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string USER_NOTE_ADD = R"(
+    INSERT INTO user_notes (user_id, target_type, target_id, note_content,
+                            color, is_pinned, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+)";
+
+const std::string USER_NOTE_UPDATE = R"(
+    UPDATE user_notes SET note_content = $1, color = $2,
+    is_pinned = $3, updated_at = $4 WHERE id = $5 AND user_id = $6
+)";
+
+const std::string USER_NOTE_DELETE = R"(
+    DELETE FROM user_notes WHERE id = $1 AND user_id = $2
+)";
+
+const std::string USER_NOTE_GET = R"(
+    SELECT id, target_type, target_id, note_content, color,
+           is_pinned, created_at, updated_at
+    FROM user_notes WHERE user_id = $1 AND target_type = $2 AND target_id = $3
+    ORDER BY is_pinned DESC, updated_at DESC
+)";
+
+const std::string CONTENT_HISTORY_ADD = R"(
+    INSERT INTO content_history (post_id, comment_id, edited_by,
+                                 old_title, old_content, new_title,
+                                 new_content, edit_reason)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+)";
+
+const std::string CONTENT_HISTORY_GET = R"(
+    SELECT id, edited_by, old_title, old_content, new_title,
+           new_content, edit_reason, edited_at
+    FROM content_history WHERE post_id = $1 OR comment_id = $2
+    ORDER BY edited_at DESC
+    LIMIT $3 OFFSET $4
+)";
+
+const std::string QUICKACCESS_ADD = R"(
+    INSERT INTO quick_access (user_id, item_type, item_id, item_name,
+                               item_icon, sort_order)
+    VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING
+)";
+
+const std::string QUICKACCESS_REMOVE = R"(
+    DELETE FROM quick_access 
+    WHERE user_id = $1 AND item_type = $2 AND item_id = $3
+)";
+
+const std::string QUICKACCESS_GET = R"(
+    SELECT item_type, item_id, item_name, item_icon, sort_order
+    FROM quick_access WHERE user_id = $1
+    ORDER BY sort_order, id
+)";
+
+const std::string WORDFILTER_GET_ALL = R"(
+    SELECT word, replacement, filter_level, is_regex FROM word_filter
+    ORDER BY filter_level DESC
+)";
+
+const std::string WORDFILTER_ADD = R"(
+    INSERT INTO word_filter (word, replacement, filter_level, is_regex, created_by)
+    VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING
+)";
+
+const std::string WORDFILTER_REMOVE = R"(
+    DELETE FROM word_filter WHERE id = $1
+)";
+
+const std::string SERIES_CREATE = R"(
+    INSERT INTO post_series (user_id, title, description, cover_image, is_public)
+    VALUES ($1, $2, $3, $4, $5) RETURNING id
+)";
+
+const std::string SERIES_UPDATE = R"(
+    UPDATE post_series SET title = $1, description = $2, cover_image = $3,
+    is_public = $4, updated_at = $5 WHERE id = $6 AND user_id = $7
+)";
+
+const std::string SERIES_DELETE = R"(
+    DELETE FROM post_series WHERE id = $1 AND user_id = $2
+)";
+
+const std::string SERIES_GET_BY_USER = R"(
+    SELECT id, title, description, cover_image, is_public,
+           post_count, view_count, created_at
+    FROM post_series WHERE user_id = $1
+    ORDER BY updated_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string SERIES_POST_ADD = R"(
+    INSERT INTO series_posts (series_id, post_id, sort_order)
+    VALUES ($1, $2, $3) ON CONFLICT DO NOTHING
+)";
+
+const std::string SERIES_POST_REMOVE = R"(
+    DELETE FROM series_posts WHERE series_id = $1 AND post_id = $2
+)";
+
+const std::string SERIES_POSTS_GET = R"(
+    SELECT sp.post_id, p.title, sp.sort_order, sp.added_at
+    FROM series_posts sp
+    JOIN posts p ON sp.post_id = p.id
+    WHERE sp.series_id = $1
+    ORDER BY sp.sort_order, sp.added_at
+)";
+
+const std::string PREFERENCES_GET = R"(
+    SELECT content_language, default_sort, show_nsfw, blur_nsfw,
+           auto_play_video, infinite_scroll, compact_mode, night_mode,
+           font_size, notify_on_like, notify_on_comment, notify_on_follow,
+           notify_on_mention, notify_on_message, email_digest,
+           show_online_status, show_read_status
+    FROM user_preferences WHERE user_id = $1
+)";
+
+const std::string PREFERENCES_SET = R"(
+    INSERT INTO user_preferences (user_id, content_language, default_sort,
+        show_nsfw, blur_nsfw, auto_play_video, infinite_scroll,
+        compact_mode, night_mode, font_size, notify_on_like,
+        notify_on_comment, notify_on_follow, notify_on_mention,
+        notify_on_message, email_digest, show_online_status,
+        show_read_status, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+            $14, $15, $16, $17, $18, $19)
+    ON CONFLICT (user_id) DO UPDATE SET
+    content_language = $2, default_sort = $3, show_nsfw = $4,
+    blur_nsfw = $5, auto_play_video = $6, infinite_scroll = $7,
+    compact_mode = $8, night_mode = $9, font_size = $10,
+    notify_on_like = $11, notify_on_comment = $12, notify_on_follow = $13,
+    notify_on_mention = $14, notify_on_message = $15, email_digest = $16,
+    show_online_status = $17, show_read_status = $18, updated_at = $19
+)";
+
+const std::string RANKING_UPDATE_CONTRIBUTOR = R"(
+    INSERT INTO contributor_ranking (user_id, contribution_score,
+        posts_weight, comments_weight, likes_weight, uploads_weight,
+        help_weight, last_updated)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    ON CONFLICT (user_id) DO UPDATE SET
+    contribution_score = $2, posts_weight = $3, comments_weight = $4,
+    likes_weight = $5, uploads_weight = $6, help_weight = $7,
+    last_updated = $8
+)";
+
+const std::string RANKING_GET_TOP = R"(
+    SELECT cr.user_id, u.username, u.avatar, cr.contribution_score,
+           cr.posts_weight, cr.comments_weight, cr.likes_weight
+    FROM contributor_ranking cr
+    JOIN users u ON cr.user_id = u.id
+    ORDER BY cr.contribution_score DESC
+    LIMIT $1 OFFSET $2
+)";
+

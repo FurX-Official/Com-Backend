@@ -5,8 +5,18 @@
 #include "auth/casdoor_auth.h"
 #include <vector>
 #include <string>
+#include <functional>
+#include <unordered_map>
 
 namespace furbbs::service {
+
+struct PunishmentRule {
+    std::string offense_type;
+    int points_threshold;
+    std::string punishment_type;
+    int64_t duration_ms;
+    int points_deduction;
+};
 
 class AdvancedService {
 public:
@@ -14,6 +24,74 @@ public:
         static AdvancedService instance;
         return instance;
     }
+
+    void InitializePunishmentRules();
+
+    bool AddModerator(const std::string& token, int64_t section_id,
+                      const std::string& target_user_id,
+                      const std::string& permission_level,
+                      bool can_manage_posts, bool can_manage_comments,
+                      bool can_manage_users, bool can_manage_reports);
+
+    bool RemoveModerator(const std::string& token, int64_t section_id,
+                         const std::string& target_user_id);
+
+    std::vector<repository::ModeratorEntity> GetUserModeratorRoles(
+        const std::string& user_id);
+
+    bool CheckModeratorPermission(const std::string& user_id,
+                                  int64_t section_id,
+                                  const std::string& permission);
+
+    bool PunishUser(const std::string& token, const std::string& target_user_id,
+                    const std::string& punishment_type, const std::string& reason,
+                    int64_t duration_ms, int points_deducted);
+
+    bool AutoPunishUser(const std::string& user_id, const std::string& offense_type,
+                        const std::string& reason);
+
+    std::vector<repository::PunishmentEntity> GetUserPunishments(
+        const std::string& token, const std::string& target_user_id);
+
+    bool IsUserPunished(const std::string& user_id, const std::string& punishment_type);
+
+    void ExpireOldPunishments();
+
+    bool CreatePoll(const std::string& token, int64_t post_id,
+                    const std::string& question,
+                    const std::vector<std::string>& options,
+                    bool is_multiple, int64_t end_at);
+
+    std::optional<repository::PollEntity> GetPoll(
+        const std::string& token, int64_t post_id);
+
+    bool VotePoll(const std::string& token, int64_t post_id,
+                  const std::vector<int32_t>& option_indices);
+
+    void CalculateHotScores();
+
+    std::vector<int64_t> GetHotPosts(int limit, int offset);
+
+    std::vector<int64_t> GetPersonalizedFeed(const std::string& user_id,
+                                             int limit, int offset);
+
+    bool SetUserWatermark(const std::string& token, const std::string& text,
+                          const std::string& position, double opacity,
+                          bool is_enabled);
+
+    std::optional<repository::WatermarkEntity> GetUserWatermark(
+        const std::string& token);
+
+    bool SetFeedSettings(const std::string& token, const std::string& feed_type,
+                         const std::vector<int64_t>& include_sections,
+                         const std::vector<std::string>& exclude_tags);
+
+    std::optional<repository::FeedSettingsEntity> GetFeedSettings(
+        const std::string& token);
+
+    void LogRecommendation(const std::string& user_id, int64_t post_id,
+                           const std::string& algorithm, const std::string& action,
+                           double score);
 
     int64_t CreateGroup(const std::string& token, const std::string& name,
                         const std::string& description, bool is_public,
@@ -69,7 +147,16 @@ public:
                          int64_t post_id, int64_t comment_id);
 
 private:
-    AdvancedService() = default;
+    AdvancedService() {
+        InitializePunishmentRules();
+    }
+
+    std::string ValidateAndGetUserId(const std::string& token);
+
+    bool IsAdmin(const std::string& user_id);
+
+    std::unordered_map<std::string, std::vector<PunishmentRule>> punishment_rules_;
+    std::unordered_map<std::string, int> user_offense_counts_;
 };
 
 } // namespace furbbs::service

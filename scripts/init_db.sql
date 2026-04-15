@@ -2254,3 +2254,359 @@ CREATE INDEX idx_collection_user ON collection_folders(user_id);
 CREATE INDEX idx_tags_tagger ON user_tags(tagger_id);
 CREATE INDEX idx_filter_user ON keyword_filters(user_id);
 CREATE INDEX idx_drafts_user ON post_drafts(user_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS section_moderators (
+    id SERIAL PRIMARY KEY,
+    section_id BIGINT NOT NULL,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    assigned_by VARCHAR(128),
+    permission_level VARCHAR(32) DEFAULT 'full',
+    can_manage_posts BOOLEAN DEFAULT true,
+    can_manage_comments BOOLEAN DEFAULT true,
+    can_manage_users BOOLEAN DEFAULT true,
+    can_manage_reports BOOLEAN DEFAULT true,
+    assigned_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(section_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_punishments (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    punishment_type VARCHAR(32) NOT NULL,
+    reason TEXT,
+    duration BIGINT,
+    points_deducted INT DEFAULT 0,
+    executed_by VARCHAR(128),
+    executed_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    expires_at BIGINT,
+    is_active BOOLEAN DEFAULT true
+);
+
+CREATE TABLE IF NOT EXISTS punishment_records (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    punishment_type VARCHAR(32) NOT NULL,
+    reason TEXT,
+    points_deducted INT DEFAULT 0,
+    executed_by VARCHAR(128),
+    executed_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS poll_votes (
+    id SERIAL PRIMARY KEY,
+    poll_id BIGINT NOT NULL,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    option_index INT NOT NULL,
+    voted_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(poll_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS post_polls (
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE PRIMARY KEY,
+    question VARCHAR(256) NOT NULL,
+    options TEXT[],
+    vote_counts INT[],
+    is_multiple BOOLEAN DEFAULT false,
+    end_at BIGINT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS hot_scores (
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE PRIMARY KEY,
+    hot_score DOUBLE PRECISION DEFAULT 0,
+    view_weight DOUBLE PRECISION DEFAULT 0,
+    like_weight DOUBLE PRECISION DEFAULT 0,
+    comment_weight DOUBLE PRECISION DEFAULT 0,
+    last_updated_at BIGINT
+);
+
+CREATE TABLE IF NOT EXISTS related_posts (
+    source_post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    target_post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    similarity DOUBLE PRECISION DEFAULT 0,
+    PRIMARY KEY (source_post_id, target_post_id)
+);
+
+CREATE TABLE IF NOT EXISTS media_watermarks (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    watermark_text VARCHAR(128),
+    watermark_position VARCHAR(32) DEFAULT 'bottom_right',
+    opacity DOUBLE PRECISION DEFAULT 0.3,
+    is_enabled BOOLEAN DEFAULT true,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS image_process_queue (
+    id SERIAL PRIMARY KEY,
+    file_path VARCHAR(256) NOT NULL,
+    user_id VARCHAR(128),
+    task_type VARCHAR(32) DEFAULT 'compress',
+    status VARCHAR(32) DEFAULT 'pending',
+    result_path VARCHAR(256),
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS user_feed_settings (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE PRIMARY KEY,
+    feed_type VARCHAR(32) DEFAULT 'hot',
+    include_sections BIGINT[],
+    exclude_tags VARCHAR(64)[],
+    updated_at BIGINT
+);
+
+CREATE TABLE IF NOT EXISTS recommendation_logs (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    post_id BIGINT,
+    algorithm VARCHAR(64),
+    action VARCHAR(32),
+    score DOUBLE PRECISION,
+    created_at BIGINT
+);
+
+CREATE INDEX idx_mod_section ON section_moderators(section_id);
+CREATE INDEX idx_mod_user ON section_moderators(user_id);
+CREATE INDEX idx_punishment_user ON user_punishments(user_id, is_active);
+CREATE INDEX idx_poll_post ON post_polls(post_id);
+CREATE INDEX idx_hot_score ON hot_scores(hot_score DESC);
+CREATE INDEX idx_hot_updated ON hot_scores(last_updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS comment_likes (
+    id SERIAL PRIMARY KEY,
+    comment_id BIGINT NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(comment_id, user_id)
+);
+
+CREATE INDEX idx_comment_like_comment ON comment_likes(comment_id);
+CREATE INDEX idx_comment_like_user ON comment_likes(user_id);
+
+CREATE TABLE IF NOT EXISTS post_appreciations (
+    id SERIAL PRIMARY KEY,
+    post_id BIGINT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    score INT NOT NULL DEFAULT 5,
+    comment TEXT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(post_id, user_id)
+);
+
+CREATE INDEX idx_appreciation_post ON post_appreciations(post_id);
+CREATE INDEX idx_appreciation_user ON post_appreciations(user_id);
+
+CREATE TABLE IF NOT EXISTS share_records (
+    id SERIAL PRIMARY KEY,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    platform VARCHAR(64) NOT NULL,
+    shared_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_share_post ON share_records(post_id);
+CREATE INDEX idx_share_user ON share_records(user_id);
+CREATE INDEX idx_share_platform ON share_records(platform);
+
+CREATE TABLE IF NOT EXISTS visit_records (
+    id SERIAL PRIMARY KEY,
+    visitor_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    target_user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    ip_address VARCHAR(64),
+    user_agent VARCHAR(512),
+    duration INT DEFAULT 0,
+    visited_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_visit_visitor ON visit_records(visitor_id);
+CREATE INDEX idx_visit_target ON visit_records(target_user_id);
+CREATE INDEX idx_visit_post ON visit_records(post_id);
+CREATE INDEX idx_visit_time ON visit_records(visited_at);
+
+CREATE TABLE IF NOT EXISTS user_tags (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    tagged_user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    tag_name VARCHAR(64) NOT NULL,
+    tag_color VARCHAR(7) DEFAULT '#808080',
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(user_id, tagged_user_id, tag_name)
+);
+
+CREATE INDEX idx_tag_owner ON user_tags(user_id);
+CREATE INDEX idx_tagged_user ON user_tags(tagged_user_id);
+
+CREATE TABLE IF NOT EXISTS similar_posts (
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    similar_post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    similarity_score DOUBLE PRECISION DEFAULT 0,
+    algorithm VARCHAR(64) DEFAULT 'tfidf',
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (post_id, similar_post_id)
+);
+
+CREATE INDEX idx_similar_post ON similar_posts(post_id);
+CREATE INDEX idx_similar_score ON similar_posts(similarity_score);
+
+CREATE TABLE IF NOT EXISTS weekly_summaries (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    week_number INT NOT NULL,
+    year INT NOT NULL,
+    posts_count INT DEFAULT 0,
+    comments_count INT DEFAULT 0,
+    likes_received INT DEFAULT 0,
+    followers_gained INT DEFAULT 0,
+    views_gained INT DEFAULT 0,
+    most_popular_post_id BIGINT,
+    summary TEXT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (user_id, week_number, year)
+);
+
+CREATE INDEX idx_summary_user ON weekly_summaries(user_id);
+CREATE INDEX idx_summary_week ON weekly_summaries(week_number, year);
+
+CREATE TABLE IF NOT EXISTS contributor_ranking (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE PRIMARY KEY,
+    contribution_score DOUBLE PRECISION DEFAULT 0,
+    posts_weight INT DEFAULT 0,
+    comments_weight INT DEFAULT 0,
+    likes_weight INT DEFAULT 0,
+    uploads_weight INT DEFAULT 0,
+    help_weight INT DEFAULT 0,
+    last_updated BIGINT
+);
+
+CREATE INDEX idx_ranking_score ON contributor_ranking(contribution_score);
+
+CREATE TABLE IF NOT EXISTS user_preferences (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE PRIMARY KEY,
+    content_language VARCHAR(8) DEFAULT 'zh',
+    default_sort VARCHAR(32) DEFAULT 'hot',
+    show_nsfw BOOLEAN DEFAULT false,
+    blur_nsfw BOOLEAN DEFAULT true,
+    auto_play_video BOOLEAN DEFAULT true,
+    infinite_scroll BOOLEAN DEFAULT true,
+    compact_mode BOOLEAN DEFAULT false,
+    night_mode VARCHAR(32) DEFAULT 'auto',
+    font_size VARCHAR(32) DEFAULT 'medium',
+    notify_on_like BOOLEAN DEFAULT true,
+    notify_on_comment BOOLEAN DEFAULT true,
+    notify_on_follow BOOLEAN DEFAULT true,
+    notify_on_mention BOOLEAN DEFAULT true,
+    notify_on_message BOOLEAN DEFAULT true,
+    email_digest BOOLEAN DEFAULT true,
+    show_online_status BOOLEAN DEFAULT true,
+    show_read_status BOOLEAN DEFAULT true,
+    updated_at BIGINT
+);
+
+CREATE TABLE IF NOT EXISTS reading_progress (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    progress_percent INT DEFAULT 0,
+    last_read_position INT DEFAULT 0,
+    total_words INT DEFAULT 0,
+    last_read_at BIGINT,
+    is_completed BOOLEAN DEFAULT false,
+    PRIMARY KEY (user_id, post_id)
+);
+
+CREATE INDEX idx_reading_user ON reading_progress(user_id);
+CREATE INDEX idx_reading_post ON reading_progress(post_id);
+CREATE INDEX idx_reading_complete ON reading_progress(is_completed);
+
+CREATE TABLE IF NOT EXISTS user_notes (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    target_type VARCHAR(32) NOT NULL,
+    target_id BIGINT NOT NULL,
+    note_content TEXT NOT NULL,
+    color VARCHAR(7) DEFAULT '#FFFF00',
+    is_pinned BOOLEAN DEFAULT false,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    updated_at BIGINT
+);
+
+CREATE INDEX idx_note_user ON user_notes(user_id);
+CREATE INDEX idx_note_target ON user_notes(target_type, target_id);
+CREATE INDEX idx_note_pinned ON user_notes(is_pinned);
+
+CREATE TABLE IF NOT EXISTS content_history (
+    id SERIAL PRIMARY KEY,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    comment_id BIGINT REFERENCES comments(id) ON DELETE CASCADE,
+    edited_by VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    old_title VARCHAR(512),
+    old_content TEXT,
+    new_title VARCHAR(512),
+    new_content TEXT,
+    edit_reason VARCHAR(512),
+    edited_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_history_post ON content_history(post_id);
+CREATE INDEX idx_history_comment ON content_history(comment_id);
+CREATE INDEX idx_history_editor ON content_history(edited_by);
+
+CREATE TABLE IF NOT EXISTS quick_access (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    item_type VARCHAR(32) NOT NULL,
+    item_id BIGINT NOT NULL,
+    item_name VARCHAR(256) NOT NULL,
+    item_icon VARCHAR(64),
+    sort_order INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(user_id, item_type, item_id)
+);
+
+CREATE INDEX idx_quickaccess_user ON quick_access(user_id);
+
+CREATE TABLE IF NOT EXISTS word_filter (
+    id SERIAL PRIMARY KEY,
+    word VARCHAR(128) NOT NULL UNIQUE,
+    replacement VARCHAR(128) DEFAULT '***',
+    filter_level INT DEFAULT 1,
+    is_regex BOOLEAN DEFAULT false,
+    created_by VARCHAR(128),
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_filter_word ON word_filter(word);
+CREATE INDEX idx_filter_level ON word_filter(filter_level);
+
+INSERT INTO word_filter (word, replacement, filter_level) VALUES
+('垃圾广告', '***', 1),
+('违规内容', '***', 1),
+('政治敏感', '***', 2),
+('色情', '***', 2),
+('赌博', '***', 2);
+
+CREATE TABLE IF NOT EXISTS post_series (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(256) NOT NULL,
+    description TEXT,
+    cover_image VARCHAR(512),
+    is_public BOOLEAN DEFAULT true,
+    post_count INT DEFAULT 0,
+    view_count INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    updated_at BIGINT
+);
+
+CREATE INDEX idx_series_user ON post_series(user_id);
+CREATE INDEX idx_series_public ON post_series(is_public);
+
+CREATE TABLE IF NOT EXISTS series_posts (
+    series_id BIGINT REFERENCES post_series(id) ON DELETE CASCADE,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    sort_order INT DEFAULT 0,
+    added_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (series_id, post_id)
+);
+
+CREATE INDEX idx_series_post ON series_posts(series_id);
+CREATE INDEX idx_series_sort ON series_posts(sort_order);
+

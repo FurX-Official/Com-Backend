@@ -14,6 +14,10 @@
 #include "../controller/social_controller.cc"
 #include "../controller/economy_controller.cc"
 #include "../controller/furry_core_controller.cc"
+#include "../controller/community_controller.cc"
+#include "../controller/community_enhanced_controller.cc"
+#include "../controller/security_controller.cc"
+#include "../controller/advanced_controller.cc"
 
 namespace furbbs::service {
 

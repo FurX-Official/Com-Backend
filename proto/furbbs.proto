@@ -1224,7 +1224,56 @@ service FurBBSService {{
     rpc GetAvatarFrames(GetSystemMetricsResponse) returns (GetAvatarFramesResponse);
     rpc SetActiveFrame(SetActiveFrameRequest) returns (SetActiveFrameResponse);
     
-    rpc GetCustomizationItems(GetSystemMetricsResponse) returns (GetCustomizationItemsResponse);
+        rpc GetCustomizationItems(GetSystemMetricsResponse) returns (GetCustomizationItemsResponse);
+
+    rpc LikeComment(CommentLikeRequest) returns (CommonResponse);
+    rpc UnlikeComment(CommentUnlikeRequest) returns (CommonResponse);
+    rpc GetCommentLikeStats(GetPostRequest) returns (CommentLikeCountResponse);
+
+    rpc RatePost(RatePostRequest) returns (CommonResponse);
+    rpc GetPostAppreciations(GetPostAppreciationsRequest) returns (GetPostAppreciationsResponse);
+
+    rpc RecordShare(RecordShareRequest) returns (CommonResponse);
+    rpc GetShareStats(GetPostRequest) returns (ShareStatsResponse);
+
+    rpc RecordVisit(RecordVisitRequest) returns (CommonResponse);
+    rpc GetProfileVisitors(GetProfileVisitorsRequest) returns (GetProfileVisitorsResponse);
+
+    rpc AddUserTag(AddUserTagRequest) returns (CommonResponse);
+    rpc RemoveUserTag(RemoveUserTagRequest) returns (CommonResponse);
+    rpc GetUserTags(GetUserRequest) returns (GetUserTagsResponse);
+
+    rpc SetReadingProgress(SetReadingProgressRequest) returns (CommonResponse);
+    rpc GetReadingProgress(GetPostRequest) returns (GetReadingProgressResponse);
+    rpc GetReadingHistoryList(GetReadingHistoryRequest) returns (GetReadingHistoryResponse);
+
+    rpc AddNote(AddNoteRequest) returns (CommonResponse);
+    rpc UpdateNote(UpdateNoteRequest) returns (CommonResponse);
+    rpc DeleteNote(DeleteNoteRequest) returns (CommonResponse);
+    rpc GetNotes(GetNotesRequest) returns (GetNotesResponse);
+
+    rpc GetContentHistory(GetContentHistoryRequest) returns (GetContentHistoryResponse);
+
+    rpc AddQuickAccess(AddQuickAccessRequest) returns (CommonResponse);
+    rpc RemoveQuickAccess(RemoveQuickAccessRequest) returns (CommonResponse);
+    rpc GetQuickAccess(GetUserRequest) returns (GetQuickAccessResponse);
+
+    rpc AddFilterWord(AddFilterWordRequest) returns (CommonResponse);
+    rpc RemoveFilterWord(RemoveFilterWordRequest) returns (CommonResponse);
+    rpc GetFilterWords(GetSystemMetricsResponse) returns (GetFilterWordsResponse);
+
+    rpc CreateSeries(CreateSeriesRequest) returns (CommonResponse);
+    rpc UpdateSeries(UpdateSeriesRequest) returns (CommonResponse);
+    rpc DeleteSeries(DeleteSeriesRequest) returns (CommonResponse);
+    rpc GetUserSeries(GetUserSeriesRequest) returns (GetUserSeriesResponse);
+    rpc AddPostToSeries(AddPostToSeriesRequest) returns (CommonResponse);
+    rpc RemovePostFromSeries(RemovePostFromSeriesRequest) returns (CommonResponse);
+    rpc GetSeriesPosts(GetPostRequest) returns (GetSeriesPostsResponse);
+
+    rpc GetUserPreferences(GetUserPreferencesRequest) returns (GetUserPreferencesResponse);
+    rpc SetUserPreferences(SetUserPreferencesRequest) returns (CommonResponse);
+
+    rpc GetTopContributors(GetTopContributorsRequest) returns (GetTopContributorsResponse);
     rpc SetCustomization(SetCustomizationRequest) returns (SetCustomizationResponse);
     
     rpc GetShopItems(GetShopItemsRequest) returns (GetShopItemsResponse);
@@ -4153,3 +4202,732 @@ message DeleteDraftResponse {
     int32 code = 1;
     string message = 2;
 }
+
+message AddModeratorRequest {
+    string access_token = 1;
+    int64 section_id = 2;
+    string target_user_id = 3;
+    string permission_level = 4;
+    bool can_manage_posts = 5;
+    bool can_manage_comments = 6;
+    bool can_manage_users = 7;
+    bool can_manage_reports = 8;
+}
+
+message AddModeratorResponse {
+    int32 code = 1;
+    string message = 2;
+    bool success = 3;
+}
+
+message RemoveModeratorRequest {
+    string access_token = 1;
+    int64 section_id = 2;
+    string target_user_id = 3;
+}
+
+message RemoveModeratorResponse {
+    int32 code = 1;
+    string message = 2;
+    bool success = 3;
+}
+
+message GetUserModeratorRolesRequest {
+    string user_id = 1;
+}
+
+message ModeratorRole {
+    int64 section_id = 1;
+    string permission_level = 2;
+    bool can_manage_posts = 3;
+    bool can_manage_comments = 4;
+    bool can_manage_users = 5;
+    bool can_manage_reports = 6;
+    int64 assigned_at = 7;
+}
+
+message GetUserModeratorRolesResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ModeratorRole roles = 3;
+    bool success = 4;
+}
+
+message PunishUserRequest {
+    string access_token = 1;
+    string target_user_id = 2;
+    string punishment_type = 3;
+    string reason = 4;
+    int64 duration_ms = 5;
+    int32 points_deducted = 6;
+}
+
+message PunishUserResponse {
+    int32 code = 1;
+    string message = 2;
+    bool success = 3;
+}
+
+message GetUserPunishmentsRequest {
+    string access_token = 1;
+    string target_user_id = 2;
+}
+
+message Punishment {
+    string punishment_type = 1;
+    string reason = 2;
+    string executed_by = 3;
+    int64 executed_at = 4;
+    int64 expires_at = 5;
+    int32 points_deducted = 6;
+    bool is_active = 7;
+}
+
+message GetUserPunishmentsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Punishment punishments = 3;
+    bool success = 4;
+}
+
+message GetHotPostsRequest {
+    int32 limit = 1;
+    int32 offset = 2;
+}
+
+message GetPersonalizedFeedRequest {
+    string access_token = 1;
+    int32 limit = 2;
+    int32 offset = 3;
+}
+
+message GetPostListResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated int64 post_ids = 3;
+    int32 total = 4;
+    bool success = 5;
+}
+
+message SetUserWatermarkRequest {
+    string access_token = 1;
+    string watermark_text = 2;
+    string position = 3;
+    double opacity = 4;
+    bool is_enabled = 5;
+}
+
+message SetUserWatermarkResponse {
+    int32 code = 1;
+    string message = 2;
+    bool success = 3;
+}
+
+message GetUserWatermarkRequest {
+    string access_token = 1;
+}
+
+message GetUserWatermarkResponse {
+    int32 code = 1;
+    string message = 2;
+    string watermark_text = 3;
+    string position = 4;
+    double opacity = 5;
+    bool is_enabled = 6;
+    bool success = 7;
+}
+
+message SetFeedSettingsRequest {
+    string access_token = 1;
+    string feed_type = 2;
+    repeated int64 include_sections = 3;
+    repeated string exclude_tags = 4;
+}
+
+message SetFeedSettingsResponse {
+    int32 code = 1;
+    string message = 2;
+    bool success = 3;
+}
+
+message GetFeedSettingsRequest {
+    string access_token = 1;
+}
+
+message GetFeedSettingsResponse {
+    int32 code = 1;
+    string message = 2;
+    string feed_type = 3;
+    repeated int64 include_sections = 4;
+    repeated string exclude_tags = 5;
+    bool success = 6;
+}
+
+message CommonResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message CreateEntityResponse {
+    bool success = 1;
+    string message = 2;
+    int64 id = 3;
+}
+
+message ManageGroupMemberRequest {
+    string access_token = 1;
+    int64 group_id = 2;
+    string target_user_id = 3;
+    int32 action = 4;
+    int32 new_role = 5;
+}
+
+message GetMentionsRequest {
+    string access_token = 1;
+    bool only_unread = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message Mention {
+    int64 id = 1;
+    string from_user_id = 2;
+    int64 post_id = 3;
+    int64 comment_id = 4;
+    int64 mentioned_at = 5;
+    bool is_read = 6;
+}
+
+message GetMentionsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Mention mentions = 3;
+    int32 total = 4;
+    int32 unread_count = 5;
+}
+
+message MarkMentionReadRequest {
+    string access_token = 1;
+    int64 mention_id = 2;
+    bool mark_all = 3;
+}
+
+message FavoritePostRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    bool favorite = 3;
+}
+
+message GetFavoritePostsRequest {
+    string access_token = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message GetGroupsRequest {
+    string access_token = 1;
+    string user_id = 2;
+    string tag = 3;
+    string keyword = 4;
+    int32 page = 5;
+    int32 page_size = 6;
+}
+
+message Group {
+    int64 id = 1;
+    string name = 2;
+    string description = 3;
+    string creator_id = 4;
+    bool is_public = 5;
+    int32 member_count = 6;
+    int64 created_at = 7;
+}
+
+message GetGroupsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Group groups = 3;
+    int32 total = 4;
+}
+
+message CreateGroupRequest {
+    string access_token = 1;
+    string name = 2;
+    string description = 3;
+    bool is_public = 4;
+    bool allow_join_request = 5;
+    repeated string tags = 6;
+}
+
+message RegisterEventRequest {
+    string access_token = 1;
+    int64 event_id = 2;
+    int32 ticket_type = 3;
+    int32 guest_count = 4;
+    string contact = 5;
+}
+
+message EventRegistration {
+    int64 id = 1;
+    int64 event_id = 2;
+    string user_id = 3;
+    int32 ticket_type = 4;
+    int32 guest_count = 5;
+    string contact = 6;
+    int32 status = 7;
+    int64 registered_at = 8;
+}
+
+message GetEventRegistrationsRequest {
+    string access_token = 1;
+    int64 event_id = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetEventRegistrationsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated EventRegistration registrations = 3;
+    int32 total = 4;
+    int32 confirmed_count = 5;
+}
+
+message UpdateRegistrationStatusRequest {
+    string access_token = 1;
+    int64 reg_id = 2;
+    int32 new_status = 3;
+}
+
+message GroupPost {
+    int64 id = 1;
+    int64 group_id = 2;
+    string title = 3;
+    string author_id = 4;
+    int64 created_at = 5;
+}
+
+message CreateGroupPostRequest {
+    string access_token = 1;
+    int64 group_id = 2;
+    string title = 3;
+    string content = 4;
+    repeated int64 tag_ids = 5;
+}
+
+message GetGroupDetailRequest {
+    string access_token = 1;
+    int64 group_id = 2;
+}
+
+message GetGroupDetailResponse {
+    int32 code = 1;
+    string message = 2;
+    Group group = 3;
+    repeated GroupPost recent_posts = 4;
+}
+
+
+message CommentLikeRequest {
+    string access_token = 1;
+    int64 comment_id = 2;
+}
+
+message CommentUnlikeRequest {
+    string access_token = 1;
+    int64 comment_id = 2;
+}
+
+message CommentLikeCountResponse {
+    int32 code = 1;
+    string message = 2;
+    int32 like_count = 3;
+    bool has_liked = 4;
+}
+
+message RatePostRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    int32 score = 3;
+    string comment = 4;
+}
+
+message GetPostAppreciationsRequest {
+    int64 post_id = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message AppreciationInfo {
+    int64 id = 1;
+    string user_id = 2;
+    string username = 3;
+    int32 score = 4;
+    string comment = 5;
+    int64 created_at = 6;
+}
+
+message GetPostAppreciationsResponse {
+    int32 code = 1;
+    string message = 2;
+    int32 total = 3;
+    double average_score = 4;
+    repeated AppreciationInfo appreciations = 5;
+}
+
+message RecordShareRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    string platform = 3;
+}
+
+message ShareStatsResponse {
+    int32 code = 1;
+    string message = 2;
+    int32 total_shares = 3;
+    map<string, int32> platform_shares = 4;
+}
+
+message RecordVisitRequest {
+    string visitor_id = 1;
+    string target_user_id = 2;
+    int64 post_id = 3;
+    string ip_address = 4;
+    string user_agent = 5;
+    int32 duration = 6;
+}
+
+message GetProfileVisitorsRequest {
+    string access_token = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message VisitorInfo {
+    string user_id = 1;
+    string username = 2;
+    string avatar = 3;
+    int64 last_visit = 4;
+    int32 visit_count = 5;
+}
+
+message GetProfileVisitorsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated VisitorInfo visitors = 3;
+    int32 total = 4;
+}
+
+message AddUserTagRequest {
+    string access_token = 1;
+    string tagged_user_id = 2;
+    string tag_name = 3;
+    string tag_color = 4;
+}
+
+message RemoveUserTagRequest {
+    string access_token = 1;
+    string tagged_user_id = 2;
+    string tag_name = 3;
+}
+
+message UserTagInfo {
+    string tag_name = 1;
+    string tag_color = 2;
+}
+
+message GetUserTagsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated UserTagInfo tags = 3;
+}
+
+message SetReadingProgressRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    int32 progress_percent = 3;
+    int32 position = 4;
+    int32 total_words = 5;
+}
+
+message ReadingProgressInfo {
+    int64 post_id = 1;
+    string post_title = 2;
+    int32 progress_percent = 3;
+    int32 position = 4;
+    bool is_completed = 5;
+    int64 last_read_at = 6;
+}
+
+message GetReadingProgressResponse {
+    int32 code = 1;
+    string message = 2;
+    ReadingProgressInfo progress = 3;
+}
+
+message GetReadingHistoryRequest {
+    string access_token = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message GetReadingHistoryResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ReadingProgressInfo history = 3;
+    int32 total = 4;
+}
+
+message AddNoteRequest {
+    string access_token = 1;
+    string target_type = 2;
+    int64 target_id = 3;
+    string content = 4;
+    string color = 5;
+    bool is_pinned = 6;
+}
+
+message UpdateNoteRequest {
+    string access_token = 1;
+    int64 note_id = 2;
+    string content = 3;
+    string color = 4;
+    bool is_pinned = 5;
+}
+
+message DeleteNoteRequest {
+    string access_token = 1;
+    int64 note_id = 2;
+}
+
+message GetNotesRequest {
+    string access_token = 1;
+    string target_type = 2;
+    int64 target_id = 3;
+}
+
+message NoteInfo {
+    int64 id = 1;
+    string content = 2;
+    string color = 3;
+    bool is_pinned = 4;
+    int64 created_at = 5;
+    int64 updated_at = 6;
+}
+
+message GetNotesResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated NoteInfo notes = 3;
+}
+
+message ContentHistoryRecord {
+    int64 id = 1;
+    string edited_by = 2;
+    string old_content = 3;
+    string new_content = 4;
+    string reason = 5;
+    int64 edited_at = 6;
+}
+
+message GetContentHistoryRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    int64 comment_id = 3;
+    int32 page = 4;
+    int32 page_size = 5;
+}
+
+message GetContentHistoryResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ContentHistoryRecord history = 3;
+    int32 total = 4;
+}
+
+message AddQuickAccessRequest {
+    string access_token = 1;
+    string item_type = 2;
+    int64 item_id = 3;
+    string item_name = 4;
+    string item_icon = 5;
+    int32 sort_order = 6;
+}
+
+message RemoveQuickAccessRequest {
+    string access_token = 1;
+    string item_type = 2;
+    int64 item_id = 3;
+}
+
+message QuickAccessItem {
+    string item_type = 1;
+    int64 item_id = 2;
+    string item_name = 3;
+    string item_icon = 4;
+    int32 sort_order = 5;
+}
+
+message GetQuickAccessResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated QuickAccessItem items = 3;
+}
+
+message AddFilterWordRequest {
+    string access_token = 1;
+    string word = 2;
+    string replacement = 3;
+    int32 filter_level = 4;
+    bool is_regex = 5;
+}
+
+message RemoveFilterWordRequest {
+    string access_token = 1;
+    int64 id = 2;
+}
+
+message FilterWordInfo {
+    int64 id = 1;
+    string word = 2;
+    string replacement = 3;
+    int32 filter_level = 4;
+    bool is_regex = 5;
+}
+
+message GetFilterWordsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated FilterWordInfo words = 3;
+}
+
+message CreateSeriesRequest {
+    string access_token = 1;
+    string title = 2;
+    string description = 3;
+    string cover_image = 4;
+    bool is_public = 5;
+}
+
+message UpdateSeriesRequest {
+    string access_token = 1;
+    int64 series_id = 2;
+    string title = 3;
+    string description = 4;
+    string cover_image = 5;
+    bool is_public = 6;
+}
+
+message DeleteSeriesRequest {
+    string access_token = 1;
+    int64 series_id = 2;
+}
+
+message SeriesInfo {
+    int64 id = 1;
+    string user_id = 2;
+    string title = 3;
+    string description = 4;
+    string cover_image = 5;
+    bool is_public = 6;
+    int32 post_count = 7;
+    int32 view_count = 8;
+    int64 created_at = 9;
+}
+
+message GetUserSeriesRequest {
+    string access_token = 1;
+    string user_id = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetUserSeriesResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated SeriesInfo series = 3;
+    int32 total = 4;
+}
+
+message AddPostToSeriesRequest {
+    string access_token = 1;
+    int64 series_id = 2;
+    int64 post_id = 3;
+    int32 sort_order = 4;
+}
+
+message RemovePostFromSeriesRequest {
+    string access_token = 1;
+    int64 series_id = 2;
+    int64 post_id = 3;
+}
+
+message SeriesPostInfo {
+    int64 post_id = 1;
+    string title = 2;
+    int32 sort_order = 3;
+    int64 added_at = 4;
+}
+
+message GetSeriesPostsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated SeriesPostInfo posts = 3;
+}
+
+message UserPreferences {
+    string content_language = 1;
+    string default_sort = 2;
+    bool show_nsfw = 3;
+    bool blur_nsfw = 4;
+    bool auto_play_video = 5;
+    bool infinite_scroll = 6;
+    bool compact_mode = 7;
+    string night_mode = 8;
+    string font_size = 9;
+    bool notify_on_like = 10;
+    bool notify_on_comment = 11;
+    bool notify_on_follow = 12;
+    bool notify_on_mention = 13;
+    bool notify_on_message = 14;
+    bool email_digest = 15;
+    bool show_online_status = 16;
+    bool show_read_status = 17;
+}
+
+message GetUserPreferencesRequest {
+    string access_token = 1;
+}
+
+message GetUserPreferencesResponse {
+    int32 code = 1;
+    string message = 2;
+    UserPreferences preferences = 3;
+}
+
+message SetUserPreferencesRequest {
+    string access_token = 1;
+    UserPreferences preferences = 2;
+}
+
+message ContributorRanking {
+    string user_id = 1;
+    string username = 2;
+    string avatar = 3;
+    double contribution_score = 4;
+    int32 posts_count = 5;
+    int32 comments_count = 6;
+    int32 likes_count = 7;
+}
+
+message GetTopContributorsRequest {
+    int32 limit = 1;
+    int32 offset = 2;
+}
+
+message GetTopContributorsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated ContributorRanking rankings = 3;
+}
+
