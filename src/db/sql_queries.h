@@ -807,6 +807,101 @@ const std::string WORLD_GET_PAGES = R"(
 const std::string WORLD_DELETE_PAGE = R"(
     DELETE FROM world_pages p WHERE p.id = $1 AND p.world_id = $2
     AND EXISTS (SELECT 1 FROM world_settings w WHERE w.id = p.world_id AND w.user_id = $3)
+);
+
+const std::string CARD_CREATE = R"(
+    INSERT INTO fursona_cards (fursona_id, user_id, template_id, theme_color,
+    background_image, show_stats, show_artist, card_layout, created_at, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, EXTRACT(EPOCH FROM NOW()) * 1000, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT (fursona_id) DO UPDATE SET
+    template_id = $3, theme_color = $4, background_image = $5,
+    show_stats = $6, show_artist = $7, card_layout = $8,
+    updated_at = EXTRACT(EPOCH FROM NOW()) * 1000
+    RETURNING id
+)";
+const std::string CARD_GET_BY_FURSONA = R"(
+    SELECT c.*, f.name as fursona_name, f.species, f.gender
+    FROM fursona_cards c
+    JOIN fursonas f ON c.fursona_id = f.id
+    WHERE c.fursona_id = $1
+)";
+const std::string CARD_INC_VIEW = R"(
+    UPDATE fursona_cards SET view_count = view_count + 1 WHERE fursona_id = $1
+)";
+
+const std::string RATING_SET = R"(
+    INSERT INTO content_ratings (content_type, content_id, user_id,
+    rating_level, content_warnings, rated_by, rated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT (content_type, content_id) DO UPDATE SET
+    rating_level = $4, content_warnings = $5, rated_by = $6,
+    rated_at = EXTRACT(EPOCH FROM NOW()) * 1000
+)";
+const std::string RATING_GET = R"(
+    SELECT * FROM content_ratings WHERE content_type = $1 AND content_id = $2
+)";
+
+const std::string PREFS_GET = R"(
+    SELECT * FROM user_content_preferences WHERE user_id = $1
+)";
+const std::string PREFS_UPDATE = R"(
+    INSERT INTO user_content_preferences
+    (user_id, show_safe, show_questionable, show_explicit,
+    enabled_warnings, blur_sensitive, age_verified, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT (user_id) DO UPDATE SET
+    show_safe = $2, show_questionable = $3, show_explicit = $4,
+    enabled_warnings = $5, blur_sensitive = $6, age_verified = $7,
+    updated_at = EXTRACT(EPOCH FROM NOW()) * 1000
+)";
+
+const std::string PERMISSION_REQUEST = R"(
+    INSERT INTO creation_permissions (author_user_id, authorized_user_id,
+    fursona_id, permission_type, terms, created_at)
+    VALUES ($1, $2, $3, $4, $5, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT DO NOTHING
+    RETURNING id
+)";
+const std::string PERMISSION_APPROVE = R"(
+    UPDATE creation_permissions SET is_approved = true
+    WHERE id = $1 AND author_user_id = $2
+)";
+const std::string PERMISSION_GET_BY_USER = R"(
+    SELECT p.*, f.name as fursona_name
+    FROM creation_permissions p
+    JOIN fursonas f ON p.fursona_id = f.id
+    WHERE p.author_user_id = $1 OR p.authorized_user_id = $1
+)";
+
+const std::string INTERACTION_ADD = R"(
+    INSERT INTO fursona_interactions
+    (from_fursona_id, to_fursona_id, interaction_type,
+    user_note, intimacy_score, created_at)
+    VALUES ($1, $2, $3, $4, $5, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT DO NOTHING
+)";
+const std::string INTERACTION_GET = R"(
+    SELECT i.*, f.name as fursona_name FROM fursona_interactions i
+    JOIN fursonas f ON i.to_fursona_id = f.id
+    WHERE i.from_fursona_id = $1
+    ORDER BY intimacy_score DESC
+)";
+
+const std::string MOD_SUBMIT = R"(
+    INSERT INTO moderation_queue
+    (content_type, content_id, submitter_id, submitted_at)
+    VALUES ($1, $2, $3, EXTRACT(EPOCH FROM NOW()) * 1000)
+)";
+const std::string MOD_REVIEW = R"(
+    UPDATE moderation_queue SET
+    status = $1, moderator_id = $2, moderator_note = $3,
+    violation_type = $4, reviewed_at = EXTRACT(EPOCH FROM NOW()) * 1000
+    WHERE id = $5
+)";
+const std::string MOD_GET_QUEUE = R"(
+    SELECT * FROM moderation_queue
+    WHERE status = $1
+    ORDER BY submitted_at DESC LIMIT $2 OFFSET $3
 )";
 
 } // namespace furbbs::db::sql

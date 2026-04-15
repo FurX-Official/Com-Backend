@@ -351,4 +351,60 @@ namespace furbbs::service {
     return ::furbbs::controller::LikeWorld(context, request, response);
 }
 
+// ==================== 社区功能接口 ====================
+
+::trpc::Status FurBBSServiceImpl::SaveFursonaCard(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::SaveFursonaCardRequest* request,
+                                                   ::furbbs::SaveFursonaCardResponse* response) {
+    return ::furbbs::controller::SaveFursonaCard(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetFursonaCard(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::GetFursonaCardRequest* request,
+                                                  ::furbbs::GetFursonaCardResponse* response) {
+    return ::furbbs::controller::GetFursonaCard(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::SetContentRating(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::SetContentRatingRequest* request,
+                                                    ::furbbs::SetContentRatingResponse* response) {
+    return ::furbbs::controller::SetContentRating(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::UpdateContentPrefs(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::UpdateContentPrefsRequest* request,
+                                                      ::furbbs::UpdateContentPrefsResponse* response) {
+    return ::furbbs::controller::UpdateContentPrefs(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::RequestCreationPermission(::trpc::ServerContextPtr context,
+                                                             const ::furbbs::RequestCreationPermissionRequest* request,
+                                                             ::furbbs::RequestCreationPermissionResponse* response) {
+    return ::furbbs::controller::RequestCreationPermission(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::ApprovePermission(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::ApprovePermissionRequest* request,
+                                                     ::furbbs::ApprovePermissionResponse* response) {
+    return ::furbbs::controller::ApprovePermission(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::AddFursonaInteraction(::trpc::ServerContextPtr context,
+                                                          const ::furbbs::AddFursonaInteractionRequest* request,
+                                                          ::furbbs::AddFursonaInteractionResponse* response) {
+    return ::furbbs::controller::AddFursonaInteraction(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::SubmitModeration(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::SubmitModerationRequest* request,
+                                                     ::furbbs::SubmitModerationResponse* response) {
+    return ::furbbs::controller::SubmitModeration(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::ReviewModeration(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::ReviewModerationRequest* request,
+                                                     ::furbbs::ReviewModerationResponse* response) {
+    return ::furbbs::controller::ReviewModeration(context, request, response);
+}
+
 } // namespace furbbs::service

@@ -1828,3 +1828,88 @@ CREATE TABLE IF NOT EXISTS world_likes (
 CREATE INDEX idx_fursona_relations ON fursona_relations(fursona_a_id, fursona_b_id);
 CREATE INDEX idx_world_settings ON world_settings(user_id, is_public, created_at DESC);
 CREATE INDEX idx_world_pages ON world_pages(world_id, sort_order);
+
+CREATE TABLE IF NOT EXISTS fursona_cards (
+    id SERIAL PRIMARY KEY,
+    fursona_id BIGINT REFERENCES fursonas(id) ON DELETE CASCADE,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    template_id VARCHAR(32) DEFAULT 'default',
+    theme_color VARCHAR(16) DEFAULT '#6B9EFF',
+    background_image VARCHAR(256),
+    show_stats BOOLEAN DEFAULT true,
+    show_artist BOOLEAN DEFAULT true,
+    card_layout VARCHAR(16) DEFAULT 'classic',
+    font_family VARCHAR(64),
+    custom_fields JSONB,
+    view_count INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(fursona_id)
+);
+
+CREATE TABLE IF NOT EXISTS content_ratings (
+    id SERIAL PRIMARY KEY,
+    content_type VARCHAR(32) NOT NULL,
+    content_id BIGINT NOT NULL,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    rating_level VARCHAR(16) NOT NULL,
+    content_warnings VARCHAR(64)[],
+    is_age_verified BOOLEAN DEFAULT false,
+    rated_by VARCHAR(128),
+    rated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(content_type, content_id)
+);
+
+CREATE TABLE IF NOT EXISTS creation_permissions (
+    id SERIAL PRIMARY KEY,
+    author_user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    authorized_user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    fursona_id BIGINT REFERENCES fursonas(id) ON DELETE CASCADE,
+    permission_type VARCHAR(32) NOT NULL,
+    terms TEXT,
+    is_approved BOOLEAN DEFAULT false,
+    expires_at BIGINT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(author_user_id, authorized_user_id, fursona_id, permission_type)
+);
+
+CREATE TABLE IF NOT EXISTS fursona_interactions (
+    id SERIAL PRIMARY KEY,
+    from_fursona_id BIGINT REFERENCES fursonas(id) ON DELETE CASCADE,
+    to_fursona_id BIGINT REFERENCES fursonas(id) ON DELETE CASCADE,
+    interaction_type VARCHAR(32) NOT NULL,
+    user_note TEXT,
+    intimacy_score INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(from_fursona_id, to_fursona_id, interaction_type)
+);
+
+CREATE TABLE IF NOT EXISTS moderation_queue (
+    id SERIAL PRIMARY KEY,
+    content_type VARCHAR(32) NOT NULL,
+    content_id BIGINT NOT NULL,
+    submitter_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(16) DEFAULT 'pending',
+    moderator_id VARCHAR(128),
+    moderator_note TEXT,
+    violation_type VARCHAR(64),
+    submitted_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    reviewed_at BIGINT
+);
+
+CREATE TABLE IF NOT EXISTS user_content_preferences (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE PRIMARY KEY,
+    show_safe BOOLEAN DEFAULT true,
+    show_questionable BOOLEAN DEFAULT false,
+    show_explicit BOOLEAN DEFAULT false,
+    enabled_warnings VARCHAR(64)[],
+    blur_sensitive BOOLEAN DEFAULT true,
+    age_verified BOOLEAN DEFAULT false,
+    updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_fursona_cards ON fursona_cards(fursona_id, user_id);
+CREATE INDEX idx_content_ratings ON content_ratings(content_type, content_id);
+CREATE INDEX idx_creation_perms ON creation_permissions(author_user_id, authorized_user_id);
+CREATE INDEX idx_interactions ON fursona_interactions(from_fursona_id, to_fursona_id);
+CREATE INDEX idx_moderation_queue ON moderation_queue(status, submitted_at DESC);

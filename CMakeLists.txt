@@ -52,9 +52,13 @@ file(GLOB_RECURSE SRC_FILES
     "${PROJECT_SOURCE_DIR}/src/controller/social_controller.cc"
     "${PROJECT_SOURCE_DIR}/src/controller/economy_controller.cc"
     "${PROJECT_SOURCE_DIR}/src/controller/furry_core_controller.cc"
+    "${PROJECT_SOURCE_DIR}/src/controller/community_controller.cc"
     "${PROJECT_SOURCE_DIR}/src/repository/furry_core_repository.cc"
     "${PROJECT_SOURCE_DIR}/src/repository/furry_core_repository.h"
+    "${PROJECT_SOURCE_DIR}/src/repository/community_repository.cc"
+    "${PROJECT_SOURCE_DIR}/src/repository/community_repository.h"
     "${PROJECT_SOURCE_DIR}/src/service_impl/furry_core_service.h"
+    "${PROJECT_SOURCE_DIR}/src/service_impl/community_service.h"
 )
 
 file(GLOB_RECURSE PROTO_FILES
