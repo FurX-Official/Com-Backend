@@ -1477,3 +1477,88 @@ CREATE TABLE IF NOT EXISTS box_questions (
 );
 
 CREATE INDEX idx_question_box ON box_questions(box_id, is_answered, asked_at DESC);
+
+CREATE TABLE IF NOT EXISTS user_groups (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(64) NOT NULL UNIQUE,
+    description TEXT,
+    avatar VARCHAR(256),
+    banner VARCHAR(256),
+    owner_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    member_count INT DEFAULT 1,
+    post_count INT DEFAULT 0,
+    is_public BOOLEAN DEFAULT TRUE,
+    allow_join_request BOOLEAN DEFAULT TRUE,
+    tags VARCHAR(32)[],
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS group_members (
+    group_id INT REFERENCES user_groups(id) ON DELETE CASCADE,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    role INT DEFAULT 0,
+    joined_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (group_id, user_id)
+);
+
+CREATE INDEX idx_group_member ON group_members(user_id);
+
+CREATE TABLE IF NOT EXISTS group_posts (
+    id SERIAL PRIMARY KEY,
+    group_id INT REFERENCES user_groups(id) ON DELETE CASCADE,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_group_posts ON group_posts(group_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS event_registrations (
+    id SERIAL PRIMARY KEY,
+    event_id BIGINT REFERENCES events(id) ON DELETE CASCADE,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    ticket_type INT DEFAULT 0,
+    guest_count INT DEFAULT 0,
+    contact VARCHAR(128),
+    status INT DEFAULT 0,
+    registered_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(event_id, user_id)
+);
+
+CREATE INDEX idx_event_reg ON event_registrations(event_id, status);
+ALTER TABLE events ADD COLUMN IF NOT EXISTS registration_count INT DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS mentions (
+    id SERIAL PRIMARY KEY,
+    from_user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    to_user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    comment_id BIGINT,
+    content_preview VARCHAR(256),
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_mentions ON mentions(to_user_id, is_read, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS post_favorites (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (user_id, post_id)
+);
+
+CREATE INDEX idx_post_fav_user ON post_favorites(user_id);
+
+CREATE TABLE IF NOT EXISTS drafts (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(256),
+    content TEXT,
+    section_id INT,
+    tag_ids BIGINT[],
+    group_id INT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_drafts_user ON drafts(user_id);

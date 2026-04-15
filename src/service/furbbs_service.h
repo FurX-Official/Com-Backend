@@ -685,6 +685,66 @@ public:
     ::trpc::Status GetQuestions(::trpc::ServerContextPtr context,
                                 const ::furbbs::GetQuestionsRequest* request,
                                 ::furbbs::GetQuestionsResponse* response) override;
+
+    ::trpc::Status CreateGroup(::trpc::ServerContextPtr context,
+                               const ::furbbs::CreateGroupRequest* request,
+                               ::furbbs::CreateGroupResponse* response) override;
+
+    ::trpc::Status GetGroupList(::trpc::ServerContextPtr context,
+                                 const ::furbbs::GetGroupListRequest* request,
+                                 ::furbbs::GetGroupListResponse* response) override;
+
+    ::trpc::Status GetGroupDetail(::trpc::ServerContextPtr context,
+                                  const ::furbbs::GetGroupDetailRequest* request,
+                                  ::furbbs::GetGroupDetailResponse* response) override;
+
+    ::trpc::Status ManageGroupMember(::trpc::ServerContextPtr context,
+                                     const ::furbbs::ManageGroupMemberRequest* request,
+                                     ::furbbs::ManageGroupMemberResponse* response) override;
+
+    ::trpc::Status CreateGroupPost(::trpc::ServerContextPtr context,
+                                   const ::furbbs::GroupPostRequest* request,
+                                   ::furbbs::GroupPostResponse* response) override;
+
+    ::trpc::Status RegisterEvent(::trpc::ServerContextPtr context,
+                                 const ::furbbs::RegisterEventRequest* request,
+                                 ::furbbs::RegisterEventResponse* response) override;
+
+    ::trpc::Status GetEventRegistrations(::trpc::ServerContextPtr context,
+                                          const ::furbbs::GetEventRegistrationsRequest* request,
+                                          ::furbbs::GetEventRegistrationsResponse* response) override;
+
+    ::trpc::Status ManageEventRegistration(::trpc::ServerContextPtr context,
+                                            const ::furbbs::ManageEventRegistrationRequest* request,
+                                            ::furbbs::ManageEventRegistrationResponse* response) override;
+
+    ::trpc::Status GetMentions(::trpc::ServerContextPtr context,
+                               const ::furbbs::GetMentionsRequest* request,
+                               ::furbbs::GetMentionsResponse* response) override;
+
+    ::trpc::Status MarkMentionRead(::trpc::ServerContextPtr context,
+                                    const ::furbbs::MarkMentionReadRequest* request,
+                                    ::furbbs::MarkMentionReadResponse* response) override;
+
+    ::trpc::Status FavoritePost(::trpc::ServerContextPtr context,
+                                 const ::furbbs::FavoritePostRequest* request,
+                                 ::furbbs::FavoritePostResponse* response) override;
+
+    ::trpc::Status GetFavoritePosts(::trpc::ServerContextPtr context,
+                                     const ::furbbs::GetFavoritePostsRequest* request,
+                                     ::furbbs::GetFavoritePostsResponse* response) override;
+
+    ::trpc::Status SaveDraft(::trpc::ServerContextPtr context,
+                              const ::furbbs::SaveDraftRequest* request,
+                              ::furbbs::SaveDraftResponse* response) override;
+
+    ::trpc::Status GetDrafts(::trpc::ServerContextPtr context,
+                             const ::furbbs::GetDraftsRequest* request,
+                             ::furbbs::GetDraftsResponse* response) override;
+
+    ::trpc::Status DeleteDraft(::trpc::ServerContextPtr context,
+                                const ::furbbs::DeleteDraftRequest* request,
+                                ::furbbs::DeleteDraftResponse* response) override;
 };
 
 } // namespace furbbs::service

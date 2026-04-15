@@ -14,6 +14,7 @@
 #include "../service_impl/customization_service.h"
 #include "../service_impl/shop_service.h"
 #include "../service_impl/social_service.h"
+#include "../service_impl/advanced_service.h"
 
 namespace furbbs::service {
 
@@ -144,6 +145,9 @@ std::string GetCurrentDate() {
         });
 
         furbbs::common::AuditLogger::Instance().Log(user_opt->id, "CREATE_POST", "", "Post ID: " + std::to_string(post_id));
+
+        service::AdvancedService::Instance().ProcessMentions(
+            user_opt->id, request->content(), post_id, 0);
 
         response->set_code(200);
         response->set_message("Post created successfully");
@@ -7147,6 +7151,319 @@ static const int64_t SERVER_START_TIME = std::chrono::duration_cast<std::chrono:
     response->set_total(total);
     response->set_code(200);
     response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::CreateGroup(::trpc::ServerContextPtr context,
+                                               const ::furbbs::CreateGroupRequest* request,
+                                               ::furbbs::CreateGroupResponse* response) {
+    std::vector<std::string> tags;
+    for (int i = 0; i < request->tags_size(); i++) {
+        tags.push_back(request->tags(i));
+    }
+
+    int64_t group_id = service::AdvancedService::Instance().CreateGroup(
+        request->access_token(),
+        request->name(),
+        request->description(),
+        request->is_public(),
+        request->allow_join_request(),
+        tags
+    );
+
+    response->set_code(group_id > 0 ? 200 : 400);
+    response->set_message(group_id > 0 ? "Created" : "Failed");
+    if (group_id > 0) {
+        response->set_group_id(group_id);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetGroupList(::trpc::ServerContextPtr context,
+                                                const ::furbbs::GetGroupListRequest* request,
+                                                ::furbbs::GetGroupListResponse* response) {
+    int total = 0;
+    auto groups = service::AdvancedService::Instance().GetGroups(
+        request->access_token(),
+        request->user_id(),
+        request->tag(),
+        request->keyword(),
+        request->page(), request->page_size(), total);
+
+    for (const auto& g : groups) {
+        auto* group = response->add_groups();
+        group->set_id(g.id);
+        group->set_name(g.name);
+        group->set_description(g.description);
+        group->set_avatar(g.avatar);
+        group->set_member_count(g.member_count);
+        group->set_post_count(g.post_count);
+        group->set_is_public(g.is_public);
+        group->set_owner_id(g.owner_id);
+        group->set_owner_name(g.owner_name);
+        group->set_is_member(g.is_member);
+        group->set_is_owner(g.is_owner);
+        group->set_member_role(g.member_role);
+        for (const auto& t : g.tags) {
+            group->add_tags(t);
+        }
+    }
+    response->set_total(total);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetGroupDetail(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetGroupDetailRequest* request,
+                                                   ::furbbs::GetGroupDetailResponse* response) {
+    auto group_opt = service::AdvancedService::Instance().GetGroupDetail(
+        request->access_token(), request->group_id());
+
+    if (group_opt) {
+        auto* g = response->mutable_group();
+        g->set_id(group_opt->id);
+        g->set_name(group_opt->name);
+        g->set_member_count(group_opt->member_count);
+        g->set_is_member(group_opt->is_member);
+        g->set_is_owner(group_opt->is_owner);
+        g->set_member_role(group_opt->member_role);
+    }
+    response->set_code(group_opt ? 200 : 404);
+    response->set_message(group_opt ? "Success" : "Not found");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::ManageGroupMember(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::ManageGroupMemberRequest* request,
+                                                      ::furbbs::ManageGroupMemberResponse* response) {
+    bool success = service::AdvancedService::Instance().ManageGroupMember(
+        request->access_token(),
+        request->group_id(),
+        request->user_id(),
+        request->action(),
+        request->new_role()
+    );
+    response->set_code(success ? 200 : 403);
+    response->set_message(success ? "Success" : "Permission denied");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::CreateGroupPost(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::GroupPostRequest* request,
+                                                    ::furbbs::GroupPostResponse* response) {
+    std::vector<int64_t> tags;
+    for (int i = 0; i < request->tag_ids_size(); i++) {
+        tags.push_back(request->tag_ids(i));
+    }
+    int64_t post_id = service::AdvancedService::Instance().CreateGroupPost(
+        request->access_token(),
+        request->group_id(),
+        request->title(),
+        request->content(),
+        tags
+    );
+    response->set_code(post_id > 0 ? 200 : 400);
+    response->set_message(post_id > 0 ? "Posted" : "Failed");
+    if (post_id > 0) {
+        response->set_post_id(post_id);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::RegisterEvent(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::RegisterEventRequest* request,
+                                                  ::furbbs::RegisterEventResponse* response) {
+    int64_t reg_id = service::AdvancedService::Instance().RegisterEvent(
+        request->access_token(),
+        request->event_id(),
+        request->ticket_type(),
+        request->guest_count(),
+        request->contact()
+    );
+    response->set_code(reg_id > 0 ? 200 : 400);
+    response->set_message(reg_id > 0 ? "Registered" : "Already registered");
+    if (reg_id > 0) {
+        response->set_registration_id(reg_id);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetEventRegistrations(::trpc::ServerContextPtr context,
+                                                         const ::furbbs::GetEventRegistrationsRequest* request,
+                                                         ::furbbs::GetEventRegistrationsResponse* response) {
+    int total = 0, confirmed = 0;
+    auto regs = service::AdvancedService::Instance().GetEventRegistrations(
+        request->access_token(),
+        request->event_id(),
+        request->page(), request->page_size(), total, confirmed);
+
+    for (const auto& r : regs) {
+        auto* reg = response->add_registrations();
+        reg->set_id(r.id);
+        reg->set_user_id(r.user_id);
+        reg->set_username(r.username);
+        reg->set_avatar(r.avatar);
+        reg->set_ticket_type(r.ticket_type);
+        reg->set_guest_count(r.guest_count);
+        reg->set_status(r.status);
+    }
+    response->set_total(total);
+    response->set_confirmed_count(confirmed);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::ManageEventRegistration(::trpc::ServerContextPtr context,
+                                                          const ::furbbs::ManageEventRegistrationRequest* request,
+                                                          ::furbbs::ManageEventRegistrationResponse* response) {
+    bool success = service::AdvancedService::Instance().UpdateRegistrationStatus(
+        request->access_token(),
+        request->registration_id(),
+        request->new_status()
+    );
+    response->set_code(success ? 200 : 403);
+    response->set_message(success ? "Updated" : "Permission denied");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetMentions(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::GetMentionsRequest* request,
+                                                  ::furbbs::GetMentionsResponse* response) {
+    int total = 0, unread = 0;
+    auto mentions = service::AdvancedService::Instance().GetMentions(
+        request->access_token(),
+        request->only_unread(),
+        request->page(), request->page_size(), total, unread);
+
+    for (const auto& m : mentions) {
+        auto* mention = response->add_mentions();
+        mention->set_id(m.id);
+        auto* from = mention->mutable_from_user();
+        from->set_user_id(m.from_user_id);
+        from->set_username(m.from_username);
+        from->set_avatar(m.from_avatar);
+        mention->set_post_id(m.post_id);
+        mention->set_post_title(m.post_title);
+        mention->set_content_preview(m.content_preview);
+        mention->set_is_read(m.is_read);
+        mention->set_created_at(m.created_at);
+    }
+    response->set_total(total);
+    response->set_unread_count(unread);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::MarkMentionRead(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::MarkMentionReadRequest* request,
+                                                     ::furbbs::MarkMentionReadResponse* response) {
+    service::AdvancedService::Instance().MarkMentionRead(
+        request->access_token(),
+        request->mention_id(),
+        request->mark_all()
+    );
+    response->set_code(200);
+    response->set_message("Marked as read");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::FavoritePost(::trpc::ServerContextPtr context,
+                                                const ::furbbs::FavoritePostRequest* request,
+                                                ::furbbs::FavoritePostResponse* response) {
+    bool success = service::AdvancedService::Instance().FavoritePost(
+        request->access_token(),
+        request->post_id(),
+        request->is_favorite()
+    );
+    response->set_code(success ? 200 : 400);
+    response->set_message(success ? "Success" : "Failed");
+    response->set_is_favorited(request->is_favorite());
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetFavoritePosts(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::GetFavoritePostsRequest* request,
+                                                     ::furbbs::GetFavoritePostsResponse* response) {
+    int total = 0;
+    auto posts = service::AdvancedService::Instance().GetFavoritePosts(
+        request->access_token(),
+        request->page(), request->page_size(), total);
+
+    for (const auto& p : posts) {
+        auto* post = response->add_posts();
+        post->set_id(p.id);
+        post->set_title(p.title);
+        post->set_author_name(p.author_name);
+        post->set_view_count(p.view_count);
+        post->set_like_count(p.like_count);
+        post->set_created_at(p.created_at);
+    }
+    response->set_total(total);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::SaveDraft(::trpc::ServerContextPtr context,
+                                            const ::furbbs::SaveDraftRequest* request,
+                                            ::furbbs::SaveDraftResponse* response) {
+    std::vector<int64_t> tags;
+    for (int i = 0; i < request->tag_ids_size(); i++) {
+        tags.push_back(request->tag_ids(i));
+    }
+    int64_t draft_id = service::AdvancedService::Instance().SaveDraft(
+        request->access_token(),
+        request->draft_id(),
+        request->title(),
+        request->content(),
+        request->section_id(),
+        tags,
+        request->group_id()
+    );
+    response->set_code(draft_id > 0 ? 200 : 400);
+    response->set_message(draft_id > 0 ? "Saved" : "Failed");
+    if (draft_id > 0) {
+        response->set_draft_id(draft_id);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetDrafts(::trpc::ServerContextPtr context,
+                                               const ::furbbs::GetDraftsRequest* request,
+                                               ::furbbs::GetDraftsResponse* response) {
+    int total = 0;
+    auto drafts = service::AdvancedService::Instance().GetDrafts(
+        request->access_token(),
+        request->page(), request->page_size(), total);
+
+    for (const auto& d : drafts) {
+        auto* draft = response->add_drafts();
+        draft->set_id(d.id);
+        draft->set_title(d.title);
+        draft->set_content(d.content);
+        draft->set_section_id(d.section_id);
+        draft->set_group_id(d.group_id);
+        draft->set_created_at(d.created_at);
+        draft->set_updated_at(d.updated_at);
+    }
+    response->set_total(total);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::DeleteDraft(::trpc::ServerContextPtr context,
+                                               const ::furbbs::DeleteDraftRequest* request,
+                                               ::furbbs::DeleteDraftResponse* response) {
+    bool success = service::AdvancedService::Instance().DeleteDraft(
+        request->access_token(),
+        request->draft_id()
+    );
+    response->set_code(success ? 200 : 404);
+    response->set_message(success ? "Deleted" : "Not found");
     return ::trpc::kSuccStatus;
 }
 

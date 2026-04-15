@@ -714,6 +714,26 @@ service FurBBSService {
     rpc AskQuestion(AskQuestionRequest) returns (AskQuestionResponse);
     rpc AnswerQuestion(AnswerQuestionRequest) returns (AnswerQuestionResponse);
     rpc GetQuestions(GetQuestionsRequest) returns (GetQuestionsResponse);
+    
+    rpc CreateGroup(CreateGroupRequest) returns (CreateGroupResponse);
+    rpc GetGroupList(GetGroupListRequest) returns (GetGroupListResponse);
+    rpc GetGroupDetail(GetGroupDetailRequest) returns (GetGroupDetailResponse);
+    rpc ManageGroupMember(ManageGroupMemberRequest) returns (ManageGroupMemberResponse);
+    rpc CreateGroupPost(GroupPostRequest) returns (GroupPostResponse);
+    
+    rpc RegisterEvent(RegisterEventRequest) returns (RegisterEventResponse);
+    rpc GetEventRegistrations(GetEventRegistrationsRequest) returns (GetEventRegistrationsResponse);
+    rpc ManageEventRegistration(ManageEventRegistrationRequest) returns (ManageEventRegistrationResponse);
+    
+    rpc GetMentions(GetMentionsRequest) returns (GetMentionsResponse);
+    rpc MarkMentionRead(MarkMentionReadRequest) returns (MarkMentionReadResponse);
+    
+    rpc FavoritePost(FavoritePostRequest) returns (FavoritePostResponse);
+    rpc GetFavoritePosts(GetFavoritePostsRequest) returns (GetFavoritePostsResponse);
+    
+    rpc SaveDraft(SaveDraftRequest) returns (SaveDraftResponse);
+    rpc GetDrafts(GetDraftsRequest) returns (GetDraftsResponse);
+    rpc DeleteDraft(DeleteDraftRequest) returns (DeleteDraftResponse);
 }
 
 message HealthCheckRequest {}
@@ -3285,4 +3305,263 @@ message GetQuestionsResponse {
     string message = 2;
     repeated Question questions = 3;
     int32 total = 4;
+}
+
+message GroupInfo {
+    int64 id = 1;
+    string name = 2;
+    string description = 3;
+    string avatar = 4;
+    string banner = 5;
+    string owner_id = 6;
+    string owner_name = 7;
+    int32 member_count = 8;
+    int32 post_count = 9;
+    bool is_public = 10;
+    bool allow_join_request = 11;
+    repeated string tags = 12;
+    int64 created_at = 13;
+    bool is_member = 14;
+    bool is_owner = 15;
+    int32 member_role = 16;
+}
+
+message CreateGroupRequest {
+    string access_token = 1;
+    string name = 2;
+    string description = 3;
+    bool is_public = 4;
+    bool allow_join_request = 5;
+    repeated string tags = 6;
+}
+
+message CreateGroupResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 group_id = 3;
+}
+
+message GetGroupListRequest {
+    string access_token = 1;
+    string user_id = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+    string tag = 5;
+    string keyword = 6;
+}
+
+message GetGroupListResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated GroupInfo groups = 3;
+    int32 total = 4;
+}
+
+message GetGroupDetailRequest {
+    string access_token = 1;
+    int64 group_id = 2;
+}
+
+message GetGroupDetailResponse {
+    int32 code = 1;
+    string message = 2;
+    GroupInfo group = 3;
+}
+
+message ManageGroupMemberRequest {
+    string access_token = 1;
+    int64 group_id = 2;
+    string user_id = 3;
+    int32 action = 4;
+    int32 new_role = 5;
+}
+
+message ManageGroupMemberResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GroupPostRequest {
+    string access_token = 1;
+    int64 group_id = 2;
+    string title = 3;
+    string content = 4;
+    repeated int64 tag_ids = 5;
+}
+
+message GroupPostResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 post_id = 3;
+}
+
+message EventRegistration {
+    int64 id = 1;
+    int64 event_id = 2;
+    string user_id = 3;
+    string username = 4;
+    string avatar = 5;
+    int32 ticket_type = 6;
+    int32 guest_count = 7;
+    string contact = 8;
+    int32 status = 9;
+    int64 registered_at = 10;
+}
+
+message RegisterEventRequest {
+    string access_token = 1;
+    int64 event_id = 2;
+    int32 ticket_type = 3;
+    int32 guest_count = 4;
+    string contact = 5;
+}
+
+message RegisterEventResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 registration_id = 3;
+}
+
+message GetEventRegistrationsRequest {
+    string access_token = 1;
+    int64 event_id = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetEventRegistrationsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated EventRegistration registrations = 3;
+    int32 total = 4;
+    int32 confirmed_count = 5;
+}
+
+message ManageEventRegistrationRequest {
+    string access_token = 1;
+    int64 registration_id = 2;
+    int32 new_status = 3;
+}
+
+message ManageEventRegistrationResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message MentionUser {
+    string user_id = 1;
+    string username = 2;
+    string avatar = 3;
+}
+
+message GetMentionsRequest {
+    string access_token = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+    bool only_unread = 4;
+}
+
+message Mention {
+    int64 id = 1;
+    MentionUser from_user = 2;
+    int64 post_id = 3;
+    string post_title = 4;
+    int64 comment_id = 5;
+    string content_preview = 6;
+    bool is_read = 7;
+    int64 created_at = 8;
+}
+
+message GetMentionsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Mention mentions = 3;
+    int32 total = 4;
+    int32 unread_count = 5;
+}
+
+message MarkMentionReadRequest {
+    string access_token = 1;
+    int64 mention_id = 2;
+    bool mark_all = 3;
+}
+
+message MarkMentionReadResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message FavoritePostRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    bool is_favorite = 3;
+}
+
+message FavoritePostResponse {
+    int32 code = 1;
+    string message = 2;
+    bool is_favorited = 3;
+}
+
+message GetFavoritePostsRequest {
+    string access_token = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message GetFavoritePostsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Post posts = 3;
+    int32 total = 4;
+}
+
+message Draft {
+    int64 id = 1;
+    string title = 2;
+    string content = 3;
+    int32 section_id = 4;
+    repeated int64 tag_ids = 5;
+    int64 group_id = 6;
+    int64 created_at = 7;
+    int64 updated_at = 8;
+}
+
+message SaveDraftRequest {
+    string access_token = 1;
+    int64 draft_id = 2;
+    string title = 3;
+    string content = 4;
+    int32 section_id = 5;
+    repeated int64 tag_ids = 6;
+    int64 group_id = 7;
+}
+
+message SaveDraftResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 draft_id = 3;
+}
+
+message GetDraftsRequest {
+    string access_token = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message GetDraftsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Draft drafts = 3;
+    int32 total = 4;
+}
+
+message DeleteDraftRequest {
+    string access_token = 1;
+    int64 draft_id = 2;
+}
+
+message DeleteDraftResponse {
+    int32 code = 1;
+    string message = 2;
 }
