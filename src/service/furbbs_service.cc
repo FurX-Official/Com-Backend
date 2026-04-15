@@ -6417,4 +6417,460 @@ static const int64_t SERVER_START_TIME = std::chrono::duration_cast<std::chrono:
     return ::trpc::kSuccStatus;
 }
 
+::trpc::Status FurBBSServiceImpl::GenerateCards(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::GenerateCardsRequest* request,
+                                                 ::furbbs::GenerateCardsResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt || user_opt->role != "admin") {
+            response->set_code(403);
+            response->set_message("Permission denied");
+            return ::trpc::kSuccStatus;
+        }
+
+        int quantity = std::min(1000, std::max(1, request->quantity()));
+        int code_length = std::min(32, std::max(8, request->code_length() > 0 ? request->code_length() : 16));
+
+        auto now = std::chrono::system_clock::now();
+        auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now.time_since_epoch()).count();
+        
+        int64_t expiry_date = 0;
+        if (request->expiry_days() > 0) {
+            expiry_date = timestamp + request->expiry_days() * 86400000LL;
+        }
+
+        auto gen_code = [&]() {
+            static const char alphanum[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            std::string code;
+            for (int i = 0; i < code_length; ++i) {
+                code += alphanum[rand() % (sizeof(alphanum) - 1)];
+            }
+            return code;
+        };
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            for (int i = 0; i < quantity; ++i) {
+                std::string code = gen_code();
+                
+                txn.exec_params(R"(
+                    INSERT INTO redeem_cards (code, type, value, item_id, item_name, 
+                                              max_uses, expiry_date, creator_id, batch_no)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    ON CONFLICT (code) DO NOTHING
+                )", code, static_cast<int>(request->type()), request->value(),
+                    request->item_id().empty() ? nullptr : request->item_id(),
+                    request->item_name().empty() ? nullptr : request->item_name(),
+                    request->max_uses() > 0 ? request->max_uses() : 1,
+                    expiry_date > 0 ? expiry_date : nullptr,
+                    user_opt->id,
+                    request->batch_no().empty() ? nullptr : request->batch_no());
+                
+                response->add_codes(code);
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Cards generated successfully");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::RedeemCard(::trpc::ServerContextPtr context,
+                                               const ::furbbs::RedeemCardRequest* request,
+                                               ::furbbs::RedeemCardResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        auto now = std::chrono::system_clock::now();
+        auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now.time_since_epoch()).count();
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec_params(R"(
+                SELECT id, type, value, item_name, status, max_uses, used_count, expiry_date
+                FROM redeem_cards WHERE code = $1 FOR UPDATE
+            )", request->redeem_code());
+
+            if (result.empty()) {
+                throw std::runtime_error("Invalid redeem code");
+            }
+
+            int card_id = result[0][0].as<int>();
+            int type = result[0][1].as<int>();
+            int value = result[0][2].as<int>();
+            std::string item_name = result[0][3].is_null() ? "" : result[0][3].as<std::string>();
+            int status = result[0][4].as<int>();
+            int max_uses = result[0][5].as<int>();
+            int used_count = result[0][6].as<int>();
+            int64_t expiry_date = result[0][7].is_null() ? 0 : result[0][7].as<int64_t>();
+
+            if (status != 0) {
+                throw std::runtime_error("Card is not active");
+            }
+            if (expiry_date > 0 && expiry_date < timestamp) {
+                throw std::runtime_error("Card has expired");
+            }
+            if (used_count >= max_uses) {
+                throw std::runtime_error("Card has been fully used");
+            }
+
+            switch (type) {
+                case 0: {
+                    txn.exec_params(R"(
+                        UPDATE user_stats SET points = points + $1 WHERE user_id = $2
+                    )", value, user_opt->id);
+                    response->set_reward_name(std::to_string(value) + " 积分");
+                    break;
+                }
+                case 1: {
+                    int64_t new_expiry = timestamp + value * 86400000LL;
+                    txn.exec_params(R"(
+                        INSERT INTO user_memberships (user_id, tier, start_date, expiry_date)
+                        VALUES ($1, $2, $3, $4)
+                        ON CONFLICT (user_id) DO UPDATE SET
+                        tier = GREATEST(user_memberships.tier, $2),
+                        expiry_date = CASE WHEN user_memberships.expiry_date < $3 THEN $4 ELSE user_memberships.expiry_date + $4 - $3 END
+                    )", user_opt->id, 2, timestamp, new_expiry);
+                    response->set_reward_name("会员 " + std::to_string(value) + " 天");
+                    break;
+                }
+                case 2: {
+                    txn.exec_params(R"(
+                        INSERT INTO user_owned_titles (user_id, title_id) VALUES ($1, $2)
+                        ON CONFLICT DO NOTHING
+                    )", user_opt->id, value);
+                    response->set_reward_name(item_name.empty() ? "专属头衔" : item_name);
+                    break;
+                }
+                case 3: {
+                    txn.exec_params(R"(
+                        INSERT INTO user_owned_frames (user_id, frame_id) VALUES ($1, $2)
+                        ON CONFLICT DO NOTHING
+                    )", user_opt->id, value);
+                    response->set_reward_name(item_name.empty() ? "头像框" : item_name);
+                    break;
+                }
+                default:
+                    response->set_reward_name(item_name.empty() ? "自定义奖励" : item_name);
+            }
+
+            int new_used_count = used_count + 1;
+            int new_status = (new_used_count >= max_uses) ? 1 : 0;
+
+            txn.exec_params(R"(
+                UPDATE redeem_cards SET used_count = $1, status = $2, 
+                used_by_id = $3, used_at = $4 WHERE id = $5
+            )", new_used_count, new_status, user_opt->id, timestamp, card_id);
+
+            response->set_reward_type(static_cast<::furbbs::CardType>(type));
+            response->set_reward_value(value);
+        });
+
+        response->set_code(200);
+        response->set_message("Card redeemed successfully!");
+    } catch (const std::exception& e) {
+        response->set_code(400);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetCardList(::trpc::ServerContextPtr context,
+                                                const ::furbbs::GetCardListRequest* request,
+                                                ::furbbs::GetCardListResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt || user_opt->role != "admin") {
+            response->set_code(403);
+            response->set_message("Permission denied");
+            return ::trpc::kSuccStatus;
+        }
+
+        int page = std::max(1, request->page());
+        int page_size = std::min(100, std::max(1, request->page_size() > 0 ? request->page_size() : 20));
+        int offset = (page - 1) * page_size;
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            std::string sql = R"(
+                SELECT id, code, type, value, item_id, item_name, status,
+                       max_uses, used_count, expiry_date, creator_id, used_by_id,
+                       created_at, used_at, batch_no
+                FROM redeem_cards WHERE 1=1
+            )";
+            std::vector<std::variant<int, std::string>> params;
+
+            if (request->status() >= 0) {
+                sql += " AND status = $" + std::to_string(params.size() + 1);
+                params.push_back(static_cast<int>(request->status()));
+            }
+            if (request->type() >= 0) {
+                sql += " AND type = $" + std::to_string(params.size() + 1);
+                params.push_back(static_cast<int>(request->type()));
+            }
+            if (!request->batch_no().empty()) {
+                sql += " AND batch_no = $" + std::to_string(params.size() + 1);
+                params.push_back(request->batch_no());
+            }
+            sql += " ORDER BY created_at DESC LIMIT $" + std::to_string(params.size() + 1) + 
+                   " OFFSET $" + std::to_string(params.size() + 2);
+
+            pqxx::prepare::invocation inv = txn.prepare(sql);
+            for (const auto& p : params) {
+                std::visit([&](auto&& arg) { inv(arg); }, p);
+            }
+            auto result = inv(page_size)(offset).exec();
+
+            for (const auto& row : result) {
+                auto* card = response->add_cards();
+                card->set_id(row[0].as<int64_t>());
+                card->set_code(row[1].as<std::string>());
+                card->set_type(static_cast<::furbbs::CardType>(row[2].as<int>()));
+                card->set_value(row[3].as<int32_t>());
+                if (!row[4].is_null()) card->set_item_id(row[4].as<std::string>());
+                if (!row[5].is_null()) card->set_item_name(row[5].as<std::string>());
+                card->set_status(static_cast<::furbbs::CardStatus>(row[6].as<int>()));
+                card->set_max_uses(row[7].as<int32_t>());
+                card->set_used_count(row[8].as<int32_t>());
+                if (!row[9].is_null()) card->set_expiry_date(row[9].as<int64_t>());
+                if (!row[10].is_null()) card->set_creator_id(row[10].as<std::string>());
+                if (!row[11].is_null()) card->set_used_by_id(row[11].as<std::string>());
+                card->set_created_at(row[12].as<int64_t>());
+                if (!row[13].is_null()) card->set_used_at(row[13].as<int64_t>());
+                if (!row[14].is_null()) card->set_batch_no(row[14].as<std::string>());
+            }
+
+            auto count_result = txn.exec("SELECT COUNT(*) FROM redeem_cards");
+            response->set_total(count_result[0][0].as<int32_t>());
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserTitles(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::GetSystemMetricsResponse* request,
+                                                 ::furbbs::GetUserTitlesResponse* response) {
+    try {
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec(R"(
+                SELECT id, name, color, bg_color, icon, rarity, is_animated
+                FROM user_titles WHERE is_active = TRUE
+                ORDER BY rarity ASC, id ASC
+            )");
+
+            for (const auto& row : result) {
+                auto* title = response->add_all_titles();
+                title->set_id(row[0].as<int32_t>());
+                title->set_name(row[1].as<std::string>());
+                title->set_color(row[2].as<std::string>());
+                if (!row[3].is_null()) title->set_bg_color(row[3].as<std::string>());
+                if (!row[4].is_null()) title->set_icon(row[4].as<std::string>());
+                title->set_rarity(row[5].as<int32_t>());
+                title->set_is_animated(row[6].as<bool>());
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::SetActiveTitle(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::SetActiveTitleRequest* request,
+                                                  ::furbbs::SetActiveTitleResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        auto now = std::chrono::system_clock::now();
+        auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now.time_since_epoch()).count();
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            txn.exec_params(R"(
+                INSERT INTO user_active_title (user_id, title_id, updated_at)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (user_id) DO UPDATE SET title_id = $2, updated_at = $3
+            )", user_opt->id, request->title_id(), timestamp);
+        });
+
+        response->set_code(200);
+        response->set_message("Active title set successfully");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetAvatarFrames(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::GetSystemMetricsResponse* request,
+                                                    ::furbbs::GetAvatarFramesResponse* response) {
+    try {
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec(R"(
+                SELECT id, name, image_url, rarity, is_animated, price
+                FROM avatar_frames WHERE is_active = TRUE
+                ORDER BY rarity ASC, id ASC
+            )");
+
+            for (const auto& row : result) {
+                auto* frame = response->add_all_frames();
+                frame->set_id(row[0].as<int32_t>());
+                frame->set_name(row[1].as<std::string>());
+                frame->set_image_url(row[2].as<std::string>());
+                frame->set_rarity(row[3].as<int32_t>());
+                frame->set_is_animated(row[4].as<bool>());
+                frame->set_price(row[5].as<int32_t>());
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::SetActiveFrame(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::SetActiveFrameRequest* request,
+                                                   ::furbbs::SetActiveFrameResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        auto now = std::chrono::system_clock::now();
+        auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now.time_since_epoch()).count();
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            txn.exec_params(R"(
+                INSERT INTO user_active_frame (user_id, frame_id, updated_at)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (user_id) DO UPDATE SET frame_id = $2, updated_at = $3
+            )", user_opt->id, request->frame_id(), timestamp);
+        });
+
+        response->set_code(200);
+        response->set_message("Active avatar frame set successfully");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetCustomizationItems(::trpc::ServerContextPtr context,
+                                                         const ::furbbs::GetSystemMetricsResponse* request,
+                                                         ::furbbs::GetCustomizationItemsResponse* response) {
+    try {
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto nameplate_result = txn.exec(R"(
+                SELECT id, name, card_bg, text_color, effect, rarity
+                FROM nameplate_styles WHERE is_active = TRUE
+                ORDER BY rarity ASC, id ASC
+            )");
+
+            for (const auto& row : nameplate_result) {
+                auto* np = response->add_nameplates();
+                np->set_id(row[0].as<int32_t>());
+                np->set_name(row[1].as<std::string>());
+                if (!row[2].is_null()) np->set_card_bg(row[2].as<std::string>());
+                if (!row[3].is_null()) np->set_text_color(row[3].as<std::string>());
+                if (!row[4].is_null()) np->set_effect(row[4].as<std::string>());
+                np->set_rarity(row[5].as<int32_t>());
+            }
+
+            auto theme_result = txn.exec(R"(
+                SELECT id, name, bg_image, primary_color, secondary_color, is_premium
+                FROM profile_themes WHERE is_active = TRUE
+                ORDER BY is_premium ASC, id ASC
+            )");
+
+            for (const auto& row : theme_result) {
+                auto* theme = response->add_themes();
+                theme->set_id(row[0].as<int32_t>());
+                theme->set_name(row[1].as<std::string>());
+                if (!row[2].is_null()) theme->set_bg_image(row[2].as<std::string>());
+                theme->set_primary_color(row[3].as<std::string>());
+                theme->set_secondary_color(row[4].as<std::string>());
+                theme->set_is_premium(row[5].as<bool>());
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::SetCustomization(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::SetCustomizationRequest* request,
+                                                    ::furbbs::SetCustomizationResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        auto now = std::chrono::system_clock::now();
+        auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now.time_since_epoch()).count();
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            txn.exec_params(R"(
+                INSERT INTO user_customization (user_id, active_nameplate_id, active_theme_id, updated_at)
+                VALUES ($1, COALESCE($2, 1), COALESCE($3, 1), $4)
+                ON CONFLICT (user_id) DO UPDATE SET 
+                active_nameplate_id = COALESCE($2, user_customization.active_nameplate_id),
+                active_theme_id = COALESCE($3, user_customization.active_theme_id),
+                updated_at = $4
+            )", user_opt->id, 
+                request->nameplate_id() > 0 ? request->nameplate_id() : nullptr,
+                request->theme_id() > 0 ? request->theme_id() : nullptr,
+                timestamp);
+        });
+
+        response->set_code(200);
+        response->set_message("Customization updated successfully");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
 } // namespace furbbs::service

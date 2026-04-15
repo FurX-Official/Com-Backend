@@ -549,6 +549,42 @@ public:
     ::trpc::Status GetUserAchievements(::trpc::ServerContextPtr context,
                                        const ::furbbs::GetUserAchievementsRequest* request,
                                        ::furbbs::GetUserAchievementsResponse* response) override;
+
+    ::trpc::Status GenerateCards(::trpc::ServerContextPtr context,
+                                 const ::furbbs::GenerateCardsRequest* request,
+                                 ::furbbs::GenerateCardsResponse* response) override;
+
+    ::trpc::Status RedeemCard(::trpc::ServerContextPtr context,
+                               const ::furbbs::RedeemCardRequest* request,
+                               ::furbbs::RedeemCardResponse* response) override;
+
+    ::trpc::Status GetCardList(::trpc::ServerContextPtr context,
+                               const ::furbbs::GetCardListRequest* request,
+                               ::furbbs::GetCardListResponse* response) override;
+
+    ::trpc::Status GetUserTitles(::trpc::ServerContextPtr context,
+                                 const ::furbbs::GetSystemMetricsResponse* request,
+                                 ::furbbs::GetUserTitlesResponse* response) override;
+
+    ::trpc::Status SetActiveTitle(::trpc::ServerContextPtr context,
+                                  const ::furbbs::SetActiveTitleRequest* request,
+                                  ::furbbs::SetActiveTitleResponse* response) override;
+
+    ::trpc::Status GetAvatarFrames(::trpc::ServerContextPtr context,
+                                   const ::furbbs::GetSystemMetricsResponse* request,
+                                   ::furbbs::GetAvatarFramesResponse* response) override;
+
+    ::trpc::Status SetActiveFrame(::trpc::ServerContextPtr context,
+                                  const ::furbbs::SetActiveFrameRequest* request,
+                                  ::furbbs::SetActiveFrameResponse* response) override;
+
+    ::trpc::Status GetCustomizationItems(::trpc::ServerContextPtr context,
+                                         const ::furbbs::GetSystemMetricsResponse* request,
+                                         ::furbbs::GetCustomizationItemsResponse* response) override;
+
+    ::trpc::Status SetCustomization(::trpc::ServerContextPtr context,
+                                    const ::furbbs::SetCustomizationRequest* request,
+                                    ::furbbs::SetCustomizationResponse* response) override;
 };
 
 } // namespace furbbs::service

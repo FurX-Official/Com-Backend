@@ -1149,3 +1149,131 @@ CREATE TABLE IF NOT EXISTS user_achievements (
 );
 
 CREATE INDEX idx_user_achievement ON user_achievements(user_id, achievement_id);
+
+CREATE TABLE IF NOT EXISTS redeem_cards (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(64) UNIQUE NOT NULL,
+    type INT NOT NULL,
+    value INT DEFAULT 0,
+    item_id VARCHAR(64),
+    item_name VARCHAR(128),
+    status INT DEFAULT 0,
+    max_uses INT DEFAULT 1,
+    used_count INT DEFAULT 0,
+    expiry_date BIGINT,
+    creator_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    used_by_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    used_at BIGINT,
+    batch_no VARCHAR(64)
+);
+
+CREATE UNIQUE INDEX idx_redeem_code ON redeem_cards(code);
+CREATE INDEX idx_redeem_status ON redeem_cards(status);
+CREATE INDEX idx_redeem_type ON redeem_cards(type);
+CREATE INDEX idx_redeem_batch ON redeem_cards(batch_no);
+
+CREATE TABLE IF NOT EXISTS user_titles (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(64) NOT NULL,
+    color VARCHAR(32) DEFAULT '#FFFFFF',
+    bg_color VARCHAR(32),
+    icon VARCHAR(512),
+    rarity INT DEFAULT 1,
+    is_animated BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+INSERT INTO user_titles (name, color, bg_color, icon, rarity, is_animated) VALUES
+('萌新', '#95E1D3', NULL, NULL, 1, FALSE),
+('社区达人', '#F38181', NULL, NULL, 2, FALSE),
+('大佬', '#AA96DA', NULL, NULL, 3, FALSE),
+('元老', '#FFD93D', NULL, NULL, 4, FALSE),
+('传奇', '#FF6B6B', 'linear-gradient(45deg, #FF6B6B, #4ECDC4)', NULL, 5, TRUE),
+('管理员', '#E74C3C', NULL, '👑', 1, FALSE),
+('版主', '#3498DB', NULL, '🛡️', 1, FALSE);
+
+CREATE TABLE IF NOT EXISTS user_owned_titles (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    title_id INT REFERENCES user_titles(id),
+    obtained_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (user_id, title_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_active_title (
+    user_id VARCHAR(128) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    title_id INT REFERENCES user_titles(id),
+    updated_at BIGINT
+);
+
+CREATE TABLE IF NOT EXISTS avatar_frames (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(64) NOT NULL,
+    image_url VARCHAR(512) NOT NULL,
+    rarity INT DEFAULT 1,
+    is_animated BOOLEAN DEFAULT FALSE,
+    price INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+INSERT INTO avatar_frames (name, image_url, rarity, is_animated, price) VALUES
+('默认边框', 'frames/default.png', 1, FALSE, 0),
+('金色边框', 'frames/gold.png', 2, FALSE, 1000),
+('钻石边框', 'frames/diamond.png', 3, FALSE, 3000),
+('彩虹边框', 'frames/rainbow.png', 4, TRUE, 5000),
+('传奇边框', 'frames/legendary.png', 5, TRUE, 10000);
+
+CREATE TABLE IF NOT EXISTS user_owned_frames (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    frame_id INT REFERENCES avatar_frames(id),
+    obtained_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (user_id, frame_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_active_frame (
+    user_id VARCHAR(128) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    frame_id INT REFERENCES avatar_frames(id),
+    updated_at BIGINT
+);
+
+CREATE TABLE IF NOT EXISTS nameplate_styles (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(64) NOT NULL,
+    card_bg VARCHAR(512),
+    text_color VARCHAR(32),
+    effect VARCHAR(128),
+    rarity INT DEFAULT 1,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+INSERT INTO nameplate_styles (name, card_bg, text_color, effect, rarity) VALUES
+('简约风格', NULL, '#333333', NULL, 1),
+('暗夜风格', '#1a1a2e', '#e0e0e0', NULL, 2),
+('渐变风格', 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', '#ffffff', 'glow', 3),
+('节日风格', '#ff6b9d', '#ffffff', 'sparkle', 4);
+
+CREATE TABLE IF NOT EXISTS profile_themes (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(64) NOT NULL,
+    bg_image VARCHAR(512),
+    primary_color VARCHAR(32),
+    secondary_color VARCHAR(32),
+    is_premium BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+INSERT INTO profile_themes (name, bg_image, primary_color, secondary_color, is_premium) VALUES
+('默认主题', NULL, '#6366f1', '#8b5cf6', FALSE),
+('森林主题', 'themes/forest.jpg', '#22c55e', '#16a34a', FALSE),
+('海洋主题', 'themes/ocean.jpg', '#0ea5e9', '#0284c7', FALSE),
+('夕阳主题', 'themes/sunset.jpg', '#f97316', '#ea580c', TRUE),
+('星空主题', 'themes/galaxy.jpg', '#8b5cf6', '#7c3aed', TRUE);
+
+CREATE TABLE IF NOT EXISTS user_customization (
+    user_id VARCHAR(128) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    active_nameplate_id INT DEFAULT 1,
+    active_theme_id INT DEFAULT 1,
+    owned_nameplates INT[] DEFAULT '{1}',
+    owned_themes INT[] DEFAULT '{1,2,3}',
+    updated_at BIGINT
+);

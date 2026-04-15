@@ -448,6 +448,81 @@ const std::string MODERATION_ACTION_LIST = R"(
     LIMIT $1 OFFSET $2
 )";
 
+const std::string REDEEM_CARD_INSERT = R"(
+    INSERT INTO redeem_cards (code, type, value, item_id, item_name, 
+                              max_uses, expiry_date, creator_id, batch_no)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    ON CONFLICT (code) DO NOTHING
+)";
+
+const std::string REDEEM_CARD_GET_BY_CODE = R"(
+    SELECT id, type, value, item_name, status, max_uses, used_count, expiry_date
+    FROM redeem_cards WHERE code = $1 FOR UPDATE
+)";
+
+const std::string REDEEM_CARD_UPDATE = R"(
+    UPDATE redeem_cards SET used_count = $1, status = $2, 
+    used_by_id = $3, used_at = $4 WHERE id = $5
+)";
+
+const std::string REDEEM_CARD_LIST = R"(
+    SELECT id, code, type, value, item_id, item_name, status,
+           max_uses, used_count, expiry_date, creator_id, used_by_id,
+           created_at, used_at, batch_no
+    FROM redeem_cards
+    ORDER BY created_at DESC
+    LIMIT $1 OFFSET $2
+)";
+
+const std::string REDEEM_CARD_COUNT = R"(
+    SELECT COUNT(*) FROM redeem_cards
+)";
+
+const std::string USER_TITLE_LIST = R"(
+    SELECT id, name, color, bg_color, icon, rarity, is_animated
+    FROM user_titles WHERE is_active = TRUE
+    ORDER BY rarity ASC, id ASC
+)";
+
+const std::string USER_ACTIVE_TITLE_SET = R"(
+    INSERT INTO user_active_title (user_id, title_id, updated_at)
+    VALUES ($1, $2, $3)
+    ON CONFLICT (user_id) DO UPDATE SET title_id = $2, updated_at = $3
+)";
+
+const std::string AVATAR_FRAME_LIST = R"(
+    SELECT id, name, image_url, rarity, is_animated, price
+    FROM avatar_frames WHERE is_active = TRUE
+    ORDER BY rarity ASC, id ASC
+)";
+
+const std::string USER_ACTIVE_FRAME_SET = R"(
+    INSERT INTO user_active_frame (user_id, frame_id, updated_at)
+    VALUES ($1, $2, $3)
+    ON CONFLICT (user_id) DO UPDATE SET frame_id = $2, updated_at = $3
+)";
+
+const std::string NAMEPLATE_STYLE_LIST = R"(
+    SELECT id, name, card_bg, text_color, effect, rarity
+    FROM nameplate_styles WHERE is_active = TRUE
+    ORDER BY rarity ASC, id ASC
+)";
+
+const std::string PROFILE_THEME_LIST = R"(
+    SELECT id, name, bg_image, primary_color, secondary_color, is_premium
+    FROM profile_themes WHERE is_active = TRUE
+    ORDER BY is_premium ASC, id ASC
+)";
+
+const std::string USER_CUSTOMIZATION_SET = R"(
+    INSERT INTO user_customization (user_id, active_nameplate_id, active_theme_id, updated_at)
+    VALUES ($1, COALESCE($2, 1), COALESCE($3, 1), $4)
+    ON CONFLICT (user_id) DO UPDATE SET 
+    active_nameplate_id = COALESCE($2, user_customization.active_nameplate_id),
+    active_theme_id = COALESCE($3, user_customization.active_theme_id),
+    updated_at = $4
+)";
+
 } // namespace furbbs::db::sql
 
 #endif // FURBBS_DB_SQL_QUERIES_H

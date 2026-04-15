@@ -667,6 +667,19 @@ service FurBBSService {
     
     rpc GetAchievements(GetSystemMetricsResponse) returns (GetAchievementsResponse);
     rpc GetUserAchievements(GetUserAchievementsRequest) returns (GetUserAchievementsResponse);
+    
+    rpc GenerateCards(GenerateCardsRequest) returns (GenerateCardsResponse);
+    rpc RedeemCard(RedeemCardRequest) returns (RedeemCardResponse);
+    rpc GetCardList(GetCardListRequest) returns (GetCardListResponse);
+    
+    rpc GetUserTitles(GetSystemMetricsResponse) returns (GetUserTitlesResponse);
+    rpc SetActiveTitle(SetActiveTitleRequest) returns (SetActiveTitleResponse);
+    
+    rpc GetAvatarFrames(GetSystemMetricsResponse) returns (GetAvatarFramesResponse);
+    rpc SetActiveFrame(SetActiveFrameRequest) returns (SetActiveFrameResponse);
+    
+    rpc GetCustomizationItems(GetSystemMetricsResponse) returns (GetCustomizationItemsResponse);
+    rpc SetCustomization(SetCustomizationRequest) returns (SetCustomizationResponse);
 }
 
 message HealthCheckRequest {}
@@ -2626,4 +2639,191 @@ message GetUserAchievementsResponse {
     string message = 2;
     repeated UserAchievement achievements = 3;
     int32 total_unlocked = 4;
+}
+
+enum CardType {
+    CARD_TYPE_POINTS = 0;
+    CARD_TYPE_MEMBERSHIP = 1;
+    CARD_TYPE_TITLE = 2;
+    CARD_TYPE_FRAME = 3;
+    CARD_TYPE_BADGE = 4;
+    CARD_TYPE_CUSTOM = 5;
+}
+
+enum CardStatus {
+    CARD_STATUS_ACTIVE = 0;
+    CARD_STATUS_USED = 1;
+    CARD_STATUS_EXPIRED = 2;
+    CARD_STATUS_DISABLED = 3;
+}
+
+message RedeemCard {
+    int64 id = 1;
+    string code = 2;
+    CardType type = 3;
+    int32 value = 4;
+    string item_id = 5;
+    string item_name = 6;
+    CardStatus status = 7;
+    int32 max_uses = 8;
+    int32 used_count = 9;
+    int64 expiry_date = 10;
+    string creator_id = 11;
+    string used_by_id = 12;
+    int64 created_at = 13;
+    int64 used_at = 14;
+    string batch_no = 15;
+}
+
+message GenerateCardsRequest {
+    string access_token = 1;
+    CardType type = 2;
+    int32 value = 3;
+    string item_id = 4;
+    string item_name = 5;
+    int32 quantity = 6;
+    int32 max_uses = 7;
+    int64 expiry_days = 8;
+    string batch_no = 9;
+    int32 code_length = 10;
+}
+
+message GenerateCardsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated string codes = 3;
+}
+
+message RedeemCardRequest {
+    string access_token = 1;
+    string redeem_code = 2;
+}
+
+message RedeemCardResponse {
+    int32 code = 1;
+    string message = 2;
+    CardType reward_type = 3;
+    int32 reward_value = 4;
+    string reward_name = 5;
+}
+
+message GetCardListRequest {
+    string access_token = 1;
+    CardStatus status = 2;
+    CardType type = 3;
+    string batch_no = 4;
+    int32 page = 5;
+    int32 page_size = 6;
+}
+
+message GetCardListResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated RedeemCard cards = 3;
+    int32 total = 4;
+}
+
+message UserTitle {
+    int32 id = 1;
+    string name = 2;
+    string color = 3;
+    string bg_color = 4;
+    string icon = 5;
+    int32 rarity = 6;
+    bool is_animated = 7;
+}
+
+message UserGroup {
+    int32 id = 1;
+    string name = 2;
+    string color = 3;
+    string badge_icon = 4;
+    int32 level = 5;
+    repeated string permissions = 6;
+    string description = 7;
+}
+
+message AvatarFrame {
+    int32 id = 1;
+    string name = 2;
+    string image_url = 3;
+    int32 rarity = 4;
+    bool is_animated = 5;
+    int32 price = 6;
+}
+
+message GetUserTitlesResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated UserTitle all_titles = 3;
+    repeated int32 owned_title_ids = 4;
+    int32 active_title_id = 5;
+}
+
+message SetActiveTitleRequest {
+    string access_token = 1;
+    int32 title_id = 2;
+}
+
+message SetActiveTitleResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GetAvatarFramesResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated AvatarFrame all_frames = 3;
+    repeated int32 owned_frame_ids = 4;
+    int32 active_frame_id = 5;
+}
+
+message SetActiveFrameRequest {
+    string access_token = 1;
+    int32 frame_id = 2;
+}
+
+message SetActiveFrameResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message NameplateStyle {
+    int32 id = 1;
+    string name = 2;
+    string card_bg = 3;
+    string text_color = 4;
+    string effect = 5;
+    int32 rarity = 6;
+}
+
+message ProfileTheme {
+    int32 id = 1;
+    string name = 2;
+    string bg_image = 3;
+    string primary_color = 4;
+    string secondary_color = 5;
+    bool is_premium = 6;
+}
+
+message GetCustomizationItemsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated NameplateStyle nameplates = 3;
+    repeated ProfileTheme themes = 4;
+    repeated int32 owned_nameplates = 5;
+    repeated int32 owned_themes = 6;
+    int32 active_nameplate = 7;
+    int32 active_theme = 8;
+}
+
+message SetCustomizationRequest {
+    string access_token = 1;
+    int32 nameplate_id = 2;
+    int32 theme_id = 3;
+}
+
+message SetCustomizationResponse {
+    int32 code = 1;
+    string message = 2;
 }
