@@ -123,7 +123,7 @@ void AdminRepository::LogAudit(const std::string& operator_id, const std::string
             now.time_since_epoch()).count();
         
         std::string operator_name = "";
-        auto user_result = txn.exec_params(R"(SELECT username FROM users WHERE id = $1)", operator_id);
+        auto user_result = txn.exec_params(sql::ADMIN_GET_USERNAME, operator_id);
         if (!user_result.empty()) {
             operator_name = user_result[0][0].as<std::string>();
         }

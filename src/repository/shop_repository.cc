@@ -63,10 +63,7 @@ int ShopRepository::GetTotalShopItems(int type, bool only_on_sale) {
 
 std::optional<ShopItemEntity> ShopRepository::GetShopItem(int32_t id) {
     return Execute<std::optional<ShopItemEntity>>([&](pqxx::work& txn) {
-        auto result = txn.exec_params(R"(
-            SELECT id, type, item_id, name, price, discount_price, stock
-            FROM shop_items WHERE id = $1 AND is_active = TRUE FOR UPDATE
-        )", id);
+        auto result = txn.exec_params(sql::SHOP_GET_ITEM, id);
         if (result.empty()) return std::nullopt;
 
         ShopItemEntity item;
@@ -83,10 +80,7 @@ std::optional<ShopItemEntity> ShopRepository::GetShopItem(int32_t id) {
 
 void ShopRepository::DeductStock(int32_t item_id, int32_t quantity) {
     Execute([&](pqxx::work& txn) {
-        txn.exec_params(R"(
-            UPDATE shop_items SET stock = stock - $1, sales = sales + $1
-            WHERE id = $2
-        )", quantity, item_id);
+        txn.exec_params(sql::SHOP_DEDUCT_STOCK, quantity, item_id);
     });
 }
 
@@ -97,25 +91,13 @@ void ShopRepository::RecordPurchase(const std::string& user_id, int32_t shop_ite
         auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
             now.time_since_epoch()).count();
 
-        txn.exec_params(R"(
-            INSERT INTO purchase_history (user_id, shop_item_id, price_paid, quantity, purchased_at)
-            VALUES ($1, $2, $3, $4, $5)
-        )", user_id, shop_item_id, price_paid, quantity, timestamp);
+        txn.exec_params(sql::SHOP_RECORD_PURCHASE, user_id, shop_item_id, price_paid, quantity, timestamp);
     });
 }
 
 std::vector<TaskProgressEntity> ShopRepository::GetUserTasks(const std::string& user_id) {
     return Execute<std::vector<TaskProgressEntity>>([&](pqxx::work& txn) {
-        auto result = txn.exec_params(R"(
-            SELECT t.id, t.name, t.description, t.target_value, t.points_reward,
-                   COALESCE(p.current_value, 0),
-                   COALESCE(p.is_completed, FALSE),
-                   COALESCE(p.is_claimed, FALSE)
-            FROM daily_tasks t
-            LEFT JOIN user_task_progress p ON t.id = p.task_id 
-                AND p.user_id = $1 AND p.last_updated = CURRENT_DATE
-            WHERE t.is_active = TRUE
-        )", user_id);
+        auto result = txn.exec_params(sql::SHOP_GET_USER_TASKS, user_id);
 
         std::vector<TaskProgressEntity> tasks;
         for (const auto& row : result) {
@@ -137,41 +119,26 @@ std::vector<TaskProgressEntity> ShopRepository::GetUserTasks(const std::string& 
 void ShopRepository::UpdateTaskProgress(const std::string& user_id, int32_t task_id,
                                          int32_t current_value, bool is_completed) {
     Execute([&](pqxx::work& txn) {
-        txn.exec_params(R"(
-            INSERT INTO user_task_progress (user_id, task_id, current_value, is_completed, last_updated)
-            VALUES ($1, $2, $3, $4, CURRENT_DATE)
-            ON CONFLICT (user_id, task_id, last_updated) DO UPDATE SET
-            current_value = $3, is_completed = $4
-        )", user_id, task_id, current_value, is_completed);
+        txn.exec_params(sql::SHOP_UPDATE_TASK_PROGRESS, user_id, task_id, current_value, is_completed);
     });
 }
 
 void ShopRepository::ClaimTaskReward(const std::string& user_id, int32_t task_id) {
     Execute([&](pqxx::work& txn) {
-        txn.exec_params(R"(
-            UPDATE user_task_progress SET is_claimed = TRUE
-            WHERE user_id = $1 AND task_id = $2 AND last_updated = CURRENT_DATE
-        )", user_id, task_id);
+        txn.exec_params(sql::SHOP_CLAIM_TASK_REWARD, user_id, task_id);
     });
 }
 
 bool ShopRepository::CheckIn(const std::string& user_id, int32_t& out_continuous,
                               int32_t& out_points, bool& out_is_bonus) {
     return Execute<bool>([&](pqxx::work& txn) {
-        auto today_result = txn.exec_params(R"(
-            SELECT 1 FROM user_checkins 
-            WHERE user_id = $1 AND checkin_date = CURRENT_DATE
-        )", user_id);
+        auto today_result = txn.exec_params(sql::SHOP_CHECKIN_CHECK_TODAY, user_id);
 
         if (!today_result.empty()) {
             return false;
         }
 
-        auto last_result = txn.exec_params(R"(
-            SELECT continuous_days FROM user_checkins
-            WHERE user_id = $1 AND checkin_date = CURRENT_DATE - INTERVAL '1 day'
-            ORDER BY checkin_date DESC LIMIT 1
-        )", user_id);
+        auto last_result = txn.exec_params(sql::SHOP_CHECKIN_GET_LAST, user_id);
 
         out_continuous = 1;
         if (!last_result.empty()) {
@@ -189,10 +156,7 @@ bool ShopRepository::CheckIn(const std::string& user_id, int32_t& out_continuous
         auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
             now.time_since_epoch()).count();
 
-        txn.exec_params(R"(
-            INSERT INTO user_checkins (user_id, continuous_days, points_earned, is_bonus, created_at)
-            VALUES ($1, $2, $3, $4, $5)
-        )", user_id, out_continuous, out_points, out_is_bonus, timestamp);
+        txn.exec_params(sql::SHOP_CHECKIN_INSERT, user_id, out_continuous, out_points, out_is_bonus, timestamp);
 
         UserRepository::Instance().AddPoints(user_id, out_points);
         return true;
@@ -203,11 +167,7 @@ void ShopRepository::GetCheckInStatus(const std::string& user_id, bool& out_chec
                                        int32_t& out_continuous, int32_t& out_total,
                                        std::vector<int32_t>& out_monthly) {
     Execute([&](pqxx::work& txn) {
-        auto result = txn.exec_params(R"(
-            SELECT checkin_date FROM user_checkins
-            WHERE user_id = $1
-            ORDER BY checkin_date DESC
-        )", user_id);
+        auto result = txn.exec_params(sql::SHOP_GET_CHECKIN_STATUS, user_id);
 
         out_checked_today = false;
         out_continuous = 0;
@@ -240,18 +200,13 @@ void ShopRepository::GetCheckInStatus(const std::string& user_id, bool& out_chec
 
 void ShopRepository::SetPostEssence(int64_t post_id, bool is_essence, int32_t level) {
     Execute([&](pqxx::work& txn) {
-        txn.exec_params(R"(
-            UPDATE posts SET is_essence = $1, essence_level = $2 WHERE id = $3
-        )", is_essence, level, post_id);
+        txn.exec_params(sql::SHOP_SET_POST_ESSENCE, is_essence, level, post_id);
     });
 }
 
 void ShopRepository::SetPostSticky(int64_t post_id, bool is_sticky, int32_t weight, int64_t expiry) {
     Execute([&](pqxx::work& txn) {
-        txn.exec_params(R"(
-            UPDATE posts SET is_sticky = $1, sticky_weight = $2, sticky_expiry = $3
-            WHERE id = $4
-        )", is_sticky, weight, expiry > 0 ? expiry : nullptr, post_id);
+        txn.exec_params(sql::SHOP_SET_POST_STICKY, is_sticky, weight, expiry > 0 ? expiry : nullptr, post_id);
     });
 }
 

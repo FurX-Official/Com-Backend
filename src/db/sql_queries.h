@@ -1363,10 +1363,6 @@ const std::string RECOMMEND_LOG = R"(
     VALUES ($1, $2, $3, $4, $5)
 )";
 
-} // namespace furbbs::db::sql
-
-#endif // FURBBS_DB_SQL_QUERIES_H
-
 const std::string COMMENT_LIKE_ADD = R"(
     INSERT INTO comment_likes (comment_id, user_id)
     VALUES ($1, $2) ON CONFLICT DO NOTHING
@@ -2110,3 +2106,400 @@ const std::string ADMIN_COUNT_ADMIN_USERS = R"(
     JOIN roles r ON ur.role_id = r.id
     WHERE r.level >= 10
 )";
+
+const std::string ADMIN_GET_USERNAME = R"(SELECT username FROM users WHERE id = $1)";
+
+const std::string USER_ADD_POINTS = R"(UPDATE user_stats SET points = points + $1 WHERE user_id = $2)";
+
+const std::string USER_ADD_MEMBERSHIP = R"(
+    INSERT INTO user_memberships (user_id, tier, start_date, expiry_date)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (user_id) DO UPDATE SET
+    tier = GREATEST(user_memberships.tier, $2),
+    expiry_date = CASE WHEN user_memberships.expiry_date < $3 THEN $4
+                       ELSE user_memberships.expiry_date + $4 - $3 END
+)";
+
+const std::string USER_UNLOCK_TITLE = R"(
+    INSERT INTO user_owned_titles (user_id, title_id) VALUES ($1, $2)
+    ON CONFLICT DO NOTHING
+)";
+
+const std::string USER_UNLOCK_FRAME = R"(
+    INSERT INTO user_owned_frames (user_id, frame_id) VALUES ($1, $2)
+    ON CONFLICT DO NOTHING
+)";
+
+const std::string USER_GET_STATS_INTERNAL = R"(SELECT points, level FROM user_stats WHERE user_id = $1)";
+
+const std::string USER_ADD_ACHIEVEMENT_POINTS = R"(
+    UPDATE user_stats SET points = points + (
+        SELECT points_reward FROM achievements WHERE id = $1
+    ) WHERE user_id = $2
+)";
+
+const std::string SHOP_GET_ITEM = R"(
+    SELECT id, type, item_id, name, price, discount_price, stock
+    FROM shop_items WHERE id = $1 AND is_active = TRUE FOR UPDATE
+)";
+
+const std::string SHOP_DEDUCT_STOCK = R"(
+    UPDATE shop_items SET stock = stock - $1, sales = sales + $1
+    WHERE id = $2
+)";
+
+const std::string SHOP_RECORD_PURCHASE = R"(
+    INSERT INTO purchase_history (user_id, shop_item_id, price_paid, quantity, purchased_at)
+    VALUES ($1, $2, $3, $4, $5)
+)";
+
+const std::string SHOP_GET_USER_TASKS = R"(
+    SELECT t.id, t.name, t.description, t.target_value, t.points_reward,
+           COALESCE(p.current_value, 0),
+           COALESCE(p.is_completed, FALSE),
+           COALESCE(p.is_claimed, FALSE)
+    FROM daily_tasks t
+    LEFT JOIN user_task_progress p ON t.id = p.task_id 
+        AND p.user_id = $1 AND p.last_updated = CURRENT_DATE
+    WHERE t.is_active = TRUE
+)";
+
+const std::string SHOP_UPDATE_TASK_PROGRESS = R"(
+    INSERT INTO user_task_progress (user_id, task_id, current_value, is_completed, last_updated)
+    VALUES ($1, $2, $3, $4, CURRENT_DATE)
+    ON CONFLICT (user_id, task_id, last_updated) DO UPDATE SET
+    current_value = $3, is_completed = $4
+)";
+
+const std::string SHOP_CLAIM_TASK_REWARD = R"(
+    UPDATE user_task_progress SET is_claimed = TRUE
+    WHERE user_id = $1 AND task_id = $2 AND last_updated = CURRENT_DATE
+)";
+
+const std::string SHOP_CHECKIN_CHECK_TODAY = R"(
+    SELECT 1 FROM user_checkins 
+    WHERE user_id = $1 AND checkin_date = CURRENT_DATE
+)";
+
+const std::string SHOP_CHECKIN_GET_LAST = R"(
+    SELECT continuous_days FROM user_checkins
+    WHERE user_id = $1 AND checkin_date = CURRENT_DATE - INTERVAL '1 day'
+    ORDER BY checkin_date DESC LIMIT 1
+)";
+
+const std::string SHOP_CHECKIN_INSERT = R"(
+    INSERT INTO user_checkins (user_id, continuous_days, points_earned, is_bonus, created_at)
+    VALUES ($1, $2, $3, $4, $5)
+)";
+
+const std::string SHOP_GET_CHECKIN_STATUS = R"(
+    SELECT checkin_date FROM user_checkins
+    WHERE user_id = $1
+    ORDER BY checkin_date DESC
+)";
+
+const std::string SHOP_SET_POST_ESSENCE = R"(
+    UPDATE posts SET is_essence = $1, essence_level = $2 WHERE id = $3
+)";
+
+const std::string SHOP_SET_POST_STICKY = R"(
+    UPDATE posts SET is_sticky = $1, sticky_weight = $2, sticky_expiry = $3
+    WHERE id = $4
+)";
+
+const std::string CUSTOM_GET_PROFILE = R"(
+    SELECT theme, bg_color, bg_image, card_style, layout_type,
+           show_fursona_first, show_badges, show_achievement,
+           music_url, custom_css, sidebar_widgets, updated_at
+    FROM user_profile_custom WHERE user_id = $1
+)";
+
+const std::string CUSTOM_UPDATE_PROFILE = R"(
+    INSERT INTO user_profile_custom (user_id, theme, bg_color, bg_image,
+        card_style, layout_type, show_fursona_first, show_badges,
+        show_achievement, music_url, custom_css, sidebar_widgets, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    ON CONFLICT (user_id) DO UPDATE SET
+        theme = $2, bg_color = $3, bg_image = $4,
+        card_style = $5, layout_type = $6,
+        show_fursona_first = $7, show_badges = $8,
+        show_achievement = $9, music_url = $10, custom_css = $11,
+        sidebar_widgets = $12, updated_at = $13
+)";
+
+const std::string CUSTOM_GET_FURSONA_CARD = R"(
+    SELECT card_theme, border_color, bg_pattern, accent_color,
+           font_style, show_stats, show_artwork, custom_fields, updated_at
+    FROM fursona_card_custom WHERE fursona_id = $1
+)";
+
+const std::string CUSTOM_VERIFY_FURSONA_OWNER = R"(
+    SELECT 1 FROM fursonas WHERE id = $1 AND user_id = $2
+)";
+
+const std::string CUSTOM_UPDATE_FURSONA_CARD = R"(
+    INSERT INTO fursona_card_custom (fursona_id, card_theme, border_color,
+        bg_pattern, accent_color, font_style, show_stats, show_artwork,
+        custom_fields, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    ON CONFLICT (fursona_id) DO UPDATE SET
+        card_theme = $2, border_color = $3, bg_pattern = $4,
+        accent_color = $5, font_style = $6, show_stats = $7,
+        show_artwork = $8, custom_fields = $9, updated_at = $10
+)";
+
+const std::string CUSTOM_GET_NOTIFY_SETTINGS = R"(
+    SELECT mention_email, mention_push, comment_email, comment_push,
+           follow_email, follow_push, like_email, like_push,
+           gift_email, gift_push, message_email, message_push,
+           event_email, event_push, weekly_digest, marketing_email
+    FROM notification_settings WHERE user_id = $1
+)";
+
+const std::string CUSTOM_UPDATE_NOTIFY_SETTINGS = R"(
+    INSERT INTO notification_settings (user_id, mention_email, mention_push,
+        comment_email, comment_push, follow_email, follow_push,
+        like_email, like_push, gift_email, gift_push,
+        message_email, message_push, event_email, event_push,
+        weekly_digest, marketing_email)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+            $13, $14, $15, $16, $17)
+    ON CONFLICT (user_id) DO UPDATE SET
+        mention_email = $2, mention_push = $3,
+        comment_email = $4, comment_push = $5,
+        follow_email = $6, follow_push = $7,
+        like_email = $8, like_push = $9,
+        gift_email = $10, gift_push = $11,
+        message_email = $12, message_push = $13,
+        event_email = $14, event_push = $15,
+        weekly_digest = $16, marketing_email = $17
+)";
+
+const std::string CUSTOM_GET_FEED_SETTINGS = R"(
+    SELECT default_sort, show_avatars, show_signatures, compact_mode,
+           posts_per_page, auto_load_more, blur_nsfw, hide_nsfw,
+           blocked_tags, blocked_users
+    FROM feed_settings WHERE user_id = $1
+)";
+
+const std::string CUSTOM_UPDATE_FEED_SETTINGS = R"(
+    INSERT INTO feed_settings (user_id, default_sort, show_avatars,
+        show_signatures, compact_mode, posts_per_page, auto_load_more,
+        blur_nsfw, hide_nsfw, blocked_tags, blocked_users)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    ON CONFLICT (user_id) DO UPDATE SET
+        default_sort = $2, show_avatars = $3, show_signatures = $4,
+        compact_mode = $5, posts_per_page = $6, auto_load_more = $7,
+        blur_nsfw = $8, hide_nsfw = $9, blocked_tags = $10,
+        blocked_users = $11
+)";
+
+const std::string SOCIAL_FOLLOW_ADD = R"(
+    INSERT INTO user_follows (follower_id, following_id)
+    VALUES ($1, $2) ON CONFLICT DO NOTHING
+)";
+
+const std::string SOCIAL_FOLLOW_REMOVE = R"(
+    DELETE FROM user_follows WHERE follower_id = $1 AND following_id = $2
+)";
+
+const std::string SOCIAL_FOLLOW_INC_FOLLOWING = R"(
+    UPDATE users SET following_count = following_count + 1 WHERE id = $1
+)";
+
+const std::string SOCIAL_FOLLOW_DEC_FOLLOWING = R"(
+    UPDATE users SET following_count = following_count - 1 WHERE id = $1
+)";
+
+const std::string SOCIAL_FOLLOW_INC_FOLLOWER = R"(
+    UPDATE users SET follower_count = follower_count + 1 WHERE id = $1
+)";
+
+const std::string SOCIAL_FOLLOW_DEC_FOLLOWER = R"(
+    UPDATE users SET follower_count = follower_count - 1 WHERE id = $1
+)";
+
+const std::string SOCIAL_GET_FOLLOWING = R"(
+    SELECT f.following_id, u.username, u.avatar, u.bio,
+           EXISTS(SELECT 1 FROM user_follows 
+                  WHERE follower_id = f.following_id AND following_id = $1),
+           f.created_at
+    FROM user_follows f
+    JOIN users u ON f.following_id = u.id
+    WHERE f.follower_id = $1
+    ORDER BY f.created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string SOCIAL_GET_FOLLOWERS = R"(
+    SELECT f.follower_id, u.username, u.avatar, u.bio,
+           EXISTS(SELECT 1 FROM user_follows 
+                  WHERE follower_id = $1 AND following_id = f.follower_id),
+           f.created_at
+    FROM user_follows f
+    JOIN users u ON f.follower_id = u.id
+    WHERE f.following_id = $1
+    ORDER BY f.created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string SOCIAL_CHECK_FOLLOW = R"(
+    SELECT 1 FROM user_follows WHERE follower_id = $1 AND following_id = $2 LIMIT 1
+)";
+
+const std::string SOCIAL_GET_FRIENDS = R"(
+    SELECT DISTINCT f.following_id, u.username, u.avatar,
+           GREATEST(f.created_at, f2.created_at) as connected_at
+    FROM user_follows f
+    JOIN user_follows f2 ON f.following_id = f2.follower_id
+        AND f.follower_id = f2.following_id
+    JOIN users u ON f.following_id = u.id
+    WHERE f.follower_id = $1
+    ORDER BY connected_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string SOCIAL_GET_FOLLOWING_COUNT = R"(
+    SELECT following_count FROM users WHERE id = $1
+)";
+
+const std::string SOCIAL_GET_FOLLOWER_COUNT = R"(
+    SELECT follower_count FROM users WHERE id = $1
+)";
+
+const std::string SOCIAL_GET_FRIEND_CIRCLE_POSTS = R"(
+    SELECT p.id FROM posts p
+    WHERE p.author_id IN (
+        SELECT following_id FROM user_follows WHERE follower_id = $1
+    ) OR p.author_id = $1
+    ORDER BY p.is_sticky DESC, p.sticky_weight DESC, p.created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string SOCIAL_FURSONA_FAV_ADD = R"(
+    INSERT INTO fursona_favorites (user_id, fursona_id)
+    VALUES ($1, $2) ON CONFLICT DO NOTHING
+)";
+
+const std::string SOCIAL_FURSONA_FAV_REMOVE = R"(
+    DELETE FROM fursona_favorites WHERE user_id = $1 AND fursona_id = $2
+)";
+
+const std::string SOCIAL_FURSONA_FAV_INC = R"(
+    UPDATE fursonas SET favorite_count = favorite_count + 1 WHERE id = $1
+)";
+
+const std::string SOCIAL_FURSONA_FAV_DEC = R"(
+    UPDATE fursonas SET favorite_count = favorite_count - 1 WHERE id = $1
+)";
+
+const std::string SOCIAL_GET_FAV_FURSONAS = R"(
+    SELECT fursona_id FROM fursona_favorites
+    WHERE user_id = $1
+    ORDER BY created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string SOCIAL_GET_FAV_FURSONA_COUNT = R"(
+    SELECT COUNT(*) FROM fursona_favorites WHERE user_id = $1
+)";
+
+const std::string SOCIAL_GIFT_SEND = R"(
+    INSERT INTO gift_history (from_user_id, to_user_id, gift_id, quantity,
+                              message, is_anonymous, total_value, sent_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+)";
+
+const std::string SOCIAL_GIFT_HISTORY = R"(
+    SELECT gh.id, gh.from_user_id, f.username, f.avatar,
+           gh.to_user_id, t.username, t.avatar,
+           gh.gift_id, gi.name, gi.icon, gi.rarity,
+           gh.quantity, gh.message, gh.is_anonymous,
+           gh.total_value, gh.sent_at
+    FROM gift_history gh
+    LEFT JOIN users f ON gh.from_user_id = f.id
+    LEFT JOIN users t ON gh.to_user_id = t.id
+    LEFT JOIN gift_items gi ON gh.gift_id = gi.id
+    WHERE gh.to_user_id = $1
+    ORDER BY gh.sent_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string SOCIAL_GIFT_COUNT_RECEIVED = R"(
+    SELECT COUNT(*) FROM gift_history WHERE to_user_id = $1
+)";
+
+const std::string SOCIAL_BLOCK_ADD = R"(
+    INSERT INTO user_blocks (user_id, blocked_user_id, reason)
+    VALUES ($1, $2, $3) ON CONFLICT DO NOTHING
+)";
+
+const std::string SOCIAL_BLOCK_REMOVE = R"(
+    DELETE FROM user_blocks WHERE user_id = $1 AND blocked_user_id = $2
+)";
+
+const std::string SOCIAL_BLOCK_GET_ALL = R"(
+    SELECT blocked_user_id, reason, blocked_at FROM user_blocks WHERE user_id = $1
+)";
+
+const std::string SOCIAL_CHECK_BLOCK = R"(
+    SELECT 1 FROM user_blocks
+    WHERE (user_id = $1 AND blocked_user_id = $2)
+       OR (user_id = $2 AND blocked_user_id = $1)
+    LIMIT 1
+)";
+
+const std::string ECON_GET_BALANCE = R"(
+    SELECT balance FROM user_wallets WHERE user_id = $1 LIMIT 1
+)";
+
+const std::string ECON_ADD_BALANCE = R"(
+    INSERT INTO user_wallets (user_id, balance) VALUES ($1, $2)
+    ON CONFLICT (user_id) DO UPDATE SET balance = user_wallets.balance + $2
+)";
+
+const std::string ECON_SUB_BALANCE = R"(
+    UPDATE user_wallets SET balance = balance - $1
+    WHERE user_id = $2 AND balance >= $1
+)";
+
+const std::string ECON_TRANSACTION_LOG = R"(
+    INSERT INTO transaction_history (user_id, type, amount, related_user_id,
+                                     related_id, description, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+)";
+
+const std::string ECON_GET_TRANSACTIONS = R"(
+    SELECT id, type, amount, related_user_id, related_id, description, created_at
+    FROM transaction_history WHERE user_id = $1
+    ORDER BY created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string ECON_COMMISSION_GET_PRICE = R"(
+    SELECT base_price, price_per_extra FROM commission_settings WHERE artist_id = $1
+)";
+
+const std::string ECON_COMMISSION_CREATE = R"(
+    INSERT INTO commissions (artist_id, buyer_id, title, description,
+                             base_price, total_price, status, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, 0, $7) RETURNING id
+)";
+
+const std::string ECON_COMMISSION_UPDATE_STATUS = R"(
+    UPDATE commissions SET status = $1, updated_at = $2 WHERE id = $3
+)";
+
+const std::string ECON_COMMISSION_GET_BY_ID = R"(
+    SELECT c.id, c.artist_id, a.username, c.buyer_id, b.username,
+           c.title, c.description, c.base_price, c.total_price,
+           c.status, c.created_at, c.updated_at
+    FROM commissions c
+    JOIN users a ON c.artist_id = a.id
+    JOIN users b ON c.buyer_id = b.id
+    WHERE c.id = $1
+)";
+
+} // namespace furbbs::db::sql
+
+#endif // FURBBS_DB_SQL_QUERIES_H

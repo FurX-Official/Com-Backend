@@ -8,32 +8,19 @@ bool SocialRepository::SetFollow(const std::string& follower_id,
                                    const std::string& following_id, bool follow) {
     return Execute<bool>([&](pqxx::work& txn) {
         if (follow) {
-            auto result = txn.exec_params(R"(
-                INSERT INTO user_follows (follower_id, following_id)
-                VALUES ($1, $2) ON CONFLICT DO NOTHING
-            )", follower_id, following_id);
+            auto result = txn.exec_params(sql::SOCIAL_FOLLOW_ADD, follower_id, following_id);
 
             if (result.affected_rows() > 0) {
-                txn.exec_params(R"(
-                    UPDATE users SET following_count = following_count + 1 WHERE id = $1
-                )", follower_id);
-                txn.exec_params(R"(
-                    UPDATE users SET follower_count = follower_count + 1 WHERE id = $1
-                )", following_id);
+                txn.exec_params(sql::SOCIAL_FOLLOW_INC_FOLLOWING, follower_id);
+                txn.exec_params(sql::SOCIAL_FOLLOW_INC_FOLLOWER, following_id);
                 return true;
             }
         } else {
-            auto result = txn.exec_params(R"(
-                DELETE FROM user_follows WHERE follower_id = $1 AND following_id = $2
-            )", follower_id, following_id);
+            auto result = txn.exec_params(sql::SOCIAL_FOLLOW_REMOVE, follower_id, following_id);
 
             if (result.affected_rows() > 0) {
-                txn.exec_params(R"(
-                    UPDATE users SET following_count = following_count - 1 WHERE id = $1
-                )", follower_id);
-                txn.exec_params(R"(
-                    UPDATE users SET follower_count = follower_count - 1 WHERE id = $1
-                )", following_id);
+                txn.exec_params(sql::SOCIAL_FOLLOW_DEC_FOLLOWING, follower_id);
+                txn.exec_params(sql::SOCIAL_FOLLOW_DEC_FOLLOWER, following_id);
                 return true;
             }
         }
@@ -44,17 +31,7 @@ bool SocialRepository::SetFollow(const std::string& follower_id,
 std::vector<FollowInfoEntity> SocialRepository::GetFollowing(
     const std::string& user_id, int limit, int offset) {
     return Execute<std::vector<FollowInfoEntity>>([&](pqxx::work& txn) {
-        auto result = txn.exec_params(R"(
-            SELECT f.following_id, u.username, u.avatar, u.bio,
-                   EXISTS(SELECT 1 FROM user_follows 
-                          WHERE follower_id = f.following_id AND following_id = $1),
-                   f.created_at
-            FROM user_follows f
-            JOIN users u ON f.following_id = u.id
-            WHERE f.follower_id = $1
-            ORDER BY f.created_at DESC
-            LIMIT $2 OFFSET $3
-        )", user_id, limit, offset);
+        auto result = txn.exec_params(sql::SOCIAL_GET_FOLLOWING, user_id, limit, offset);
 
         std::vector<FollowInfoEntity> list;
         for (const auto& row : result) {
@@ -74,17 +51,7 @@ std::vector<FollowInfoEntity> SocialRepository::GetFollowing(
 std::vector<FollowInfoEntity> SocialRepository::GetFollowers(
     const std::string& user_id, int limit, int offset) {
     return Execute<std::vector<FollowInfoEntity>>([&](pqxx::work& txn) {
-        auto result = txn.exec_params(R"(
-            SELECT f.follower_id, u.username, u.avatar, u.bio,
-                   EXISTS(SELECT 1 FROM user_follows 
-                          WHERE follower_id = $1 AND following_id = f.follower_id),
-                   f.created_at
-            FROM user_follows f
-            JOIN users u ON f.follower_id = u.id
-            WHERE f.following_id = $1
-            ORDER BY f.created_at DESC
-            LIMIT $2 OFFSET $3
-        )", user_id, limit, offset);
+        auto result = txn.exec_params(sql::SOCIAL_GET_FOLLOWERS, user_id, limit, offset);
 
         std::vector<FollowInfoEntity> list;
         for (const auto& row : result) {
@@ -103,18 +70,14 @@ std::vector<FollowInfoEntity> SocialRepository::GetFollowers(
 
 int SocialRepository::GetFollowingCount(const std::string& user_id) {
     return Execute<int>([&](pqxx::work& txn) {
-        auto result = txn.exec_params(R"(
-            SELECT following_count FROM users WHERE id = $1
-        )", user_id);
+        auto result = txn.exec_params(sql::SOCIAL_GET_FOLLOWING_COUNT, user_id);
         return result.empty() ? 0 : result[0][0].as<int>();
     });
 }
 
 int SocialRepository::GetFollowerCount(const std::string& user_id) {
     return Execute<int>([&](pqxx::work& txn) {
-        auto result = txn.exec_params(R"(
-            SELECT follower_count FROM users WHERE id = $1
-        )", user_id);
+        auto result = txn.exec_params(sql::SOCIAL_GET_FOLLOWER_COUNT, user_id);
         return result.empty() ? 0 : result[0][0].as<int>();
     });
 }
@@ -122,14 +85,7 @@ int SocialRepository::GetFollowerCount(const std::string& user_id) {
 std::vector<int64_t> SocialRepository::GetFriendCirclePosts(
     const std::string& user_id, int limit, int offset) {
     return Execute<std::vector<int64_t>>([&](pqxx::work& txn) {
-        auto result = txn.exec_params(R"(
-            SELECT p.id FROM posts p
-            WHERE p.author_id IN (
-                SELECT following_id FROM user_follows WHERE follower_id = $1
-            ) OR p.author_id = $1
-            ORDER BY p.is_sticky DESC, p.sticky_weight DESC, p.created_at DESC
-            LIMIT $2 OFFSET $3
-        )", user_id, limit, offset);
+        auto result = txn.exec_params(sql::SOCIAL_GET_FRIEND_CIRCLE_POSTS, user_id, limit, offset);
 
         std::vector<int64_t> ids;
         for (const auto& row : result) {
@@ -143,26 +99,17 @@ bool SocialRepository::SetFursonaFavorite(const std::string& user_id,
                                             int64_t fursona_id, bool favorite) {
     return Execute<bool>([&](pqxx::work& txn) {
         if (favorite) {
-            auto result = txn.exec_params(R"(
-                INSERT INTO fursona_favorites (user_id, fursona_id)
-                VALUES ($1, $2) ON CONFLICT DO NOTHING
-            )", user_id, fursona_id);
+            auto result = txn.exec_params(sql::SOCIAL_FURSONA_FAV_ADD, user_id, fursona_id);
 
             if (result.affected_rows() > 0) {
-                txn.exec_params(R"(
-                    UPDATE fursonas SET favorite_count = favorite_count + 1 WHERE id = $1
-                )", fursona_id);
+                txn.exec_params(sql::SOCIAL_FURSONA_FAV_INC, fursona_id);
                 return true;
             }
         } else {
-            auto result = txn.exec_params(R"(
-                DELETE FROM fursona_favorites WHERE user_id = $1 AND fursona_id = $2
-            )", user_id, fursona_id);
+            auto result = txn.exec_params(sql::SOCIAL_FURSONA_FAV_REMOVE, user_id, fursona_id);
 
             if (result.affected_rows() > 0) {
-                txn.exec_params(R"(
-                    UPDATE fursonas SET favorite_count = favorite_count - 1 WHERE id = $1
-                )", fursona_id);
+                txn.exec_params(sql::SOCIAL_FURSONA_FAV_DEC, fursona_id);
                 return true;
             }
         }
@@ -173,12 +120,7 @@ bool SocialRepository::SetFursonaFavorite(const std::string& user_id,
 std::vector<int64_t> SocialRepository::GetFavoriteFursonas(
     const std::string& user_id, int limit, int offset) {
     return Execute<std::vector<int64_t>>([&](pqxx::work& txn) {
-        auto result = txn.exec_params(R"(
-            SELECT fursona_id FROM fursona_favorites
-            WHERE user_id = $1
-            ORDER BY created_at DESC
-            LIMIT $2 OFFSET $3
-        )", user_id, limit, offset);
+        auto result = txn.exec_params(sql::SOCIAL_GET_FAV_FURSONAS, user_id, limit, offset);
 
         std::vector<int64_t> ids;
         for (const auto& row : result) {
@@ -190,9 +132,7 @@ std::vector<int64_t> SocialRepository::GetFavoriteFursonas(
 
 int SocialRepository::GetFavoriteFursonaCount(const std::string& user_id) {
     return Execute<int>([&](pqxx::work& txn) {
-        auto result = txn.exec_params(R"(
-            SELECT COUNT(*) FROM fursona_favorites WHERE user_id = $1
-        )", user_id);
+        auto result = txn.exec_params(sql::SOCIAL_GET_FAV_FURSONA_COUNT, user_id);
         return result[0][0].as<int>();
     });
 }

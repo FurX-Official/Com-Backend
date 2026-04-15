@@ -8,12 +8,7 @@ using json = nlohmann::json;
 
 ProfileCustomEntity CustomizationRepository::GetProfileCustom(const std::string& user_id) {
     return Execute<ProfileCustomEntity>([&](pqxx::work& txn) {
-        auto result = txn.exec_params(R"(
-            SELECT theme, bg_color, bg_image, card_style, layout_type,
-                   show_fursona_first, show_badges, show_achievement,
-                   music_url, custom_css, sidebar_widgets, updated_at
-            FROM user_profile_custom WHERE user_id = $1
-        )", user_id);
+        auto result = txn.exec_params(sql::CUSTOM_GET_PROFILE, user_id);
 
         ProfileCustomEntity custom;
         if (result.empty()) {
@@ -56,18 +51,7 @@ void CustomizationRepository::UpdateProfileCustom(const std::string& user_id,
             now.time_since_epoch()).count();
 
         pqxx::array<std::string> widget_arr(custom.sidebar_widgets);
-        txn.exec_params(R"(
-            INSERT INTO user_profile_custom (user_id, theme, bg_color, bg_image,
-                card_style, layout_type, show_fursona_first, show_badges,
-                show_achievement, music_url, custom_css, sidebar_widgets, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-            ON CONFLICT (user_id) DO UPDATE SET
-                theme = $2, bg_color = $3, bg_image = $4,
-                card_style = $5, layout_type = $6,
-                show_fursona_first = $7, show_badges = $8,
-                show_achievement = $9, music_url = $10, custom_css = $11,
-                sidebar_widgets = $12, updated_at = $13
-        )", user_id,
+        txn.exec_params(sql::CUSTOM_UPDATE_PROFILE, user_id,
            custom.theme.empty() ? nullptr : &custom.theme,
            custom.bg_color.empty() ? nullptr : &custom.bg_color,
            custom.bg_image.empty() ? nullptr : &custom.bg_image,
@@ -83,11 +67,7 @@ void CustomizationRepository::UpdateProfileCustom(const std::string& user_id,
 
 FursonaCardCustomEntity CustomizationRepository::GetFursonaCardCustom(int64_t fursona_id) {
     return Execute<FursonaCardCustomEntity>([&](pqxx::work& txn) {
-        auto result = txn.exec_params(R"(
-            SELECT card_theme, border_color, bg_pattern, accent_color,
-                   font_style, show_stats, show_artwork, custom_fields, updated_at
-            FROM fursona_card_custom WHERE fursona_id = $1
-        )", fursona_id);
+        auto result = txn.exec_params(sql::CUSTOM_GET_FURSONA_CARD, fursona_id);
 
         FursonaCardCustomEntity custom;
         custom.fursona_id = fursona_id;
@@ -119,9 +99,7 @@ FursonaCardCustomEntity CustomizationRepository::GetFursonaCardCustom(int64_t fu
 bool CustomizationRepository::VerifyFursonaOwner(pqxx::work& txn,
                                                  const std::string& user_id,
                                                  int64_t fursona_id) {
-    auto r = txn.exec_params(R"(
-        SELECT 1 FROM fursonas WHERE id = $1 AND user_id = $2
-    )", fursona_id, user_id);
+    auto r = txn.exec_params(sql::CUSTOM_VERIFY_FURSONA_OWNER, fursona_id, user_id);
     return !r.empty();
 }
 
@@ -138,16 +116,7 @@ void CustomizationRepository::UpdateFursonaCardCustom(const std::string& owner_i
         json j = custom.custom_fields;
         std::string json_str = j.dump();
 
-        txn.exec_params(R"(
-            INSERT INTO fursona_card_custom (fursona_id, card_theme, border_color,
-                bg_pattern, accent_color, font_style, show_stats, show_artwork,
-                custom_fields, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            ON CONFLICT (fursona_id) DO UPDATE SET
-                card_theme = $2, border_color = $3, bg_pattern = $4,
-                accent_color = $5, font_style = $6, show_stats = $7,
-                show_artwork = $8, custom_fields = $9, updated_at = $10
-        )", fursona_id,
+        txn.exec_params(sql::CUSTOM_UPDATE_FURSONA_CARD, fursona_id,
            custom.card_theme.empty() ? "classic" : custom.card_theme,
            custom.border_color.empty() ? nullptr : &custom.border_color,
            custom.bg_pattern,
@@ -161,13 +130,7 @@ void CustomizationRepository::UpdateFursonaCardCustom(const std::string& owner_i
 NotificationSettingsEntity CustomizationRepository::GetNotificationSettings(
     const std::string& user_id) {
     return Execute<NotificationSettingsEntity>([&](pqxx::work& txn) {
-        auto result = txn.exec_params(R"(
-            SELECT mention_email, mention_push, comment_email, comment_push,
-                   follow_email, follow_push, like_email, like_push,
-                   gift_email, gift_push, message_email, message_push,
-                   event_email, event_push, weekly_digest, marketing_email
-            FROM notification_settings WHERE user_id = $1
-        )", user_id);
+        auto result = txn.exec_params(sql::CUSTOM_GET_NOTIFY_SETTINGS, user_id);
 
         NotificationSettingsEntity settings;
         if (result.empty()) return settings;
@@ -196,24 +159,7 @@ NotificationSettingsEntity CustomizationRepository::GetNotificationSettings(
 void CustomizationRepository::UpdateNotificationSettings(
     const std::string& user_id, const NotificationSettingsEntity& settings) {
     Execute([&](pqxx::work& txn) {
-        txn.exec_params(R"(
-            INSERT INTO notification_settings (user_id, mention_email, mention_push,
-                comment_email, comment_push, follow_email, follow_push,
-                like_email, like_push, gift_email, gift_push,
-                message_email, message_push, event_email, event_push,
-                weekly_digest, marketing_email)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-                    $13, $14, $15, $16, $17)
-            ON CONFLICT (user_id) DO UPDATE SET
-                mention_email = $2, mention_push = $3,
-                comment_email = $4, comment_push = $5,
-                follow_email = $6, follow_push = $7,
-                like_email = $8, like_push = $9,
-                gift_email = $10, gift_push = $11,
-                message_email = $12, message_push = $13,
-                event_email = $14, event_push = $15,
-                weekly_digest = $16, marketing_email = $17
-        )", user_id,
+        txn.exec_params(sql::CUSTOM_UPDATE_NOTIFY_SETTINGS, user_id,
            settings.mention_email, settings.mention_push,
            settings.comment_email, settings.comment_push,
            settings.follow_email, settings.follow_push,
@@ -227,12 +173,7 @@ void CustomizationRepository::UpdateNotificationSettings(
 
 FeedSettingsEntity CustomizationRepository::GetFeedSettings(const std::string& user_id) {
     return Execute<FeedSettingsEntity>([&](pqxx::work& txn) {
-        auto result = txn.exec_params(R"(
-            SELECT default_sort, show_avatars, show_signatures, compact_mode,
-                   posts_per_page, auto_load_more, blur_nsfw, hide_nsfw,
-                   blocked_tags, blocked_users
-            FROM feed_settings WHERE user_id = $1
-        )", user_id);
+        auto result = txn.exec_params(sql::CUSTOM_GET_FEED_SETTINGS, user_id);
 
         FeedSettingsEntity settings;
         settings.default_sort = "hot";
@@ -257,17 +198,7 @@ void CustomizationRepository::UpdateFeedSettings(const std::string& user_id,
         pqxx::array<std::string> tag_arr(settings.blocked_tags);
         pqxx::array<std::string> user_arr(settings.blocked_users);
 
-        txn.exec_params(R"(
-            INSERT INTO feed_settings (user_id, default_sort, show_avatars,
-                show_signatures, compact_mode, posts_per_page, auto_load_more,
-                blur_nsfw, hide_nsfw, blocked_tags, blocked_users)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            ON CONFLICT (user_id) DO UPDATE SET
-                default_sort = $2, show_avatars = $3, show_signatures = $4,
-                compact_mode = $5, posts_per_page = $6, auto_load_more = $7,
-                blur_nsfw = $8, hide_nsfw = $9, blocked_tags = $10,
-                blocked_users = $11
-        )", user_id,
+        txn.exec_params(sql::CUSTOM_UPDATE_FEED_SETTINGS, user_id,
            settings.default_sort.empty() ? "hot" : settings.default_sort,
            settings.show_avatars, settings.show_signatures,
            settings.compact_mode, settings.posts_per_page,
