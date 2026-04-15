@@ -54,3 +54,29 @@ cors:
     - Content-Type
   allow_credentials: true
   max_age: 86400
+
+banner:
+  max_count: 5
+
+open_platform:
+  enable: true
+  webhook_timeout: 10000
+
+storage:
+  path: ./uploads
+  base_url: /uploads
+  max_size_mb: 10
+
+email:
+  smtp:
+    host: smtp.example.com
+    port: 587
+    user: noreply@furbbs.com
+    password: yourpassword
+  from: FurBBS <noreply@furbbs.com>
+
+cache:
+  default_ttl_seconds: 300
+
+scheduler:
+  enabled: true

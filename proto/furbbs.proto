@@ -564,6 +564,16 @@ service FurBBSService {
     rpc GetBanners(GetBannersResponse) returns (GetBannersResponse);
     rpc GetHotTopics(GetHotTopicsResponse) returns (GetHotTopicsResponse);
     rpc GetRankings(GetRankingsRequest) returns (GetRankingsResponse);
+    
+    rpc UploadFile(UploadFileRequest) returns (UploadFileResponse);
+    rpc GetFile(GetFileRequest) returns (GetFileResponse);
+    rpc DeleteFile(DeleteFileRequest) returns (DeleteFileResponse);
+    
+    rpc SendEmailCode(SendEmailCodeRequest) returns (SendEmailCodeResponse);
+    rpc VerifyEmailCode(VerifyEmailCodeRequest) returns (VerifyEmailCodeResponse);
+    
+    rpc GetCacheStats(GetSystemMetricsResponse) returns (GetCacheStatsResponse);
+    rpc GetSystemMetrics(GetSystemMetricsResponse) returns (GetSystemMetricsResponse);
 }
 
 message HealthCheckRequest {}
@@ -1294,4 +1304,99 @@ message GetRankingsResponse {
     int32 code = 1;
     string message = 2;
     repeated RankItem items = 3;
+}
+
+message UploadFileRequest {
+    string access_token = 1;
+    bytes content = 2;
+    string filename = 3;
+    string content_type = 4;
+    string purpose = 5;
+}
+
+message UploadFileResponse {
+    int32 code = 1;
+    string message = 2;
+    string file_id = 3;
+    string url = 4;
+    int64 size = 5;
+    string mime_type = 6;
+}
+
+message GetFileRequest {
+    string file_id = 1;
+}
+
+message GetFileResponse {
+    int32 code = 1;
+    string message = 2;
+    string url = 3;
+    string filename = 4;
+    int64 size = 5;
+    string mime_type = 6;
+    int64 created_at = 7;
+}
+
+message DeleteFileRequest {
+    string access_token = 1;
+    string file_id = 2;
+}
+
+message DeleteFileResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message SendEmailCodeRequest {
+    string email = 1;
+    string type = 2;
+}
+
+message SendEmailCodeResponse {
+    int32 code = 1;
+    string message = 2;
+    int32 expire_seconds = 3;
+}
+
+message VerifyEmailCodeRequest {
+    string email = 1;
+    string code = 2;
+    string type = 3;
+}
+
+message VerifyEmailCodeResponse {
+    int32 code = 1;
+    string message = 2;
+    bool is_valid = 3;
+}
+
+message CacheMetrics {
+    int64 hits = 1;
+    int64 misses = 2;
+    double hit_rate = 3;
+    int64 evictions = 4;
+    int64 total_keys = 5;
+}
+
+message GetCacheStatsResponse {
+    int32 code = 1;
+    string message = 2;
+    CacheMetrics metrics = 3;
+}
+
+message SystemMetrics {
+    double cpu_usage = 1;
+    double memory_usage_mb = 2;
+    double disk_usage_gb = 3;
+    int64 database_connections = 4;
+    int64 requests_per_second = 5;
+    double average_response_time_ms = 6;
+    int64 active_users = 7;
+}
+
+message GetSystemMetricsResponse {
+    int32 code = 1;
+    string message = 2;
+    SystemMetrics metrics = 3;
+    map<string, int64> endpoint_counts = 4;
 }

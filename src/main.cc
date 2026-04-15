@@ -10,6 +10,7 @@
 #include "service/furbbs_service.h"
 #include "middleware/auth_interceptor.h"
 #include "common/security.h"
+#include "common/infrastructure.h"
 
 int main(int argc, char* argv[]) {
     std::string config_file = "./config/config.yaml";
@@ -74,10 +75,15 @@ int main(int argc, char* argv[]) {
         spdlog::info("Auth interceptor registered successfully");
     }
 
+    furbbs::common::I18n::Instance().Load();
+    furbbs::common::Scheduler::Instance().Start();
+
     spdlog::info("FurBBS Server started on {}", server_config.listen);
     spdlog::info("Furry Community Backend is running! 🐺🦊🐲");
 
     server.Start();
+
+    furbbs::common::Scheduler::Instance().Stop();
     server.Wait();
 
     spdlog::info("FurBBS Server stopped");

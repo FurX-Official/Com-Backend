@@ -269,6 +269,34 @@ public:
     ::trpc::Status GetRankings(::trpc::ServerContextPtr context,
                               const ::furbbs::GetRankingsRequest* request,
                               ::furbbs::GetRankingsResponse* response) override;
+
+    ::trpc::Status UploadFile(::trpc::ServerContextPtr context,
+                             const ::furbbs::UploadFileRequest* request,
+                             ::furbbs::UploadFileResponse* response) override;
+
+    ::trpc::Status GetFile(::trpc::ServerContextPtr context,
+                          const ::furbbs::GetFileRequest* request,
+                          ::furbbs::GetFileResponse* response) override;
+
+    ::trpc::Status DeleteFile(::trpc::ServerContextPtr context,
+                             const ::furbbs::DeleteFileRequest* request,
+                             ::furbbs::DeleteFileResponse* response) override;
+
+    ::trpc::Status SendEmailCode(::trpc::ServerContextPtr context,
+                                const ::furbbs::SendEmailCodeRequest* request,
+                                ::furbbs::SendEmailCodeResponse* response) override;
+
+    ::trpc::Status VerifyEmailCode(::trpc::ServerContextPtr context,
+                                  const ::furbbs::VerifyEmailCodeRequest* request,
+                                  ::furbbs::VerifyEmailCodeResponse* response) override;
+
+    ::trpc::Status GetCacheStats(::trpc::ServerContextPtr context,
+                                const ::furbbs::GetSystemMetricsResponse* request,
+                                ::furbbs::GetCacheStatsResponse* response) override;
+
+    ::trpc::Status GetSystemMetrics(::trpc::ServerContextPtr context,
+                                   const ::furbbs::GetSystemMetricsResponse* request,
+                                   ::furbbs::GetSystemMetricsResponse* response) override;
 };
 
 } // namespace furbbs::service

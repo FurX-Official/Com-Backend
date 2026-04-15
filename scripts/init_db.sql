@@ -463,3 +463,72 @@ INSERT INTO banners (title, image, link, "order") VALUES
 ('兽设画廊', 'https://example.com/banner1.jpg', '/gallery', 1),
 ('委托交易', 'https://example.com/banner2.jpg', '/commissions', 2),
 ('线下兽聚', 'https://example.com/banner3.jpg', '/events', 3);
+
+CREATE TABLE IF NOT EXISTS files (
+    id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    filename VARCHAR(512) NOT NULL,
+    original_name VARCHAR(512) NOT NULL,
+    mime_type VARCHAR(128),
+    size BIGINT NOT NULL,
+    storage_type VARCHAR(32) DEFAULT 'local',
+    path VARCHAR(1024) NOT NULL,
+    url VARCHAR(1024),
+    purpose VARCHAR(64),
+    hash VARCHAR(128),
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_files_user_id ON files(user_id);
+CREATE INDEX idx_files_purpose ON files(purpose);
+
+CREATE TABLE IF NOT EXISTS email_codes (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    code VARCHAR(16) NOT NULL,
+    type VARCHAR(32) NOT NULL,
+    expire_at BIGINT NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_email_codes_email ON email_codes(email);
+CREATE INDEX idx_email_codes_expire ON email_codes(expire_at);
+
+CREATE TABLE IF NOT EXISTS distributed_locks (
+    key VARCHAR(128) PRIMARY KEY,
+    owner VARCHAR(128) NOT NULL,
+    expire_at BIGINT NOT NULL,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS scheduled_tasks (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(128) NOT NULL,
+    cron VARCHAR(64) NOT NULL,
+    last_run BIGINT,
+    next_run BIGINT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE UNIQUE INDEX idx_scheduled_tasks_name ON scheduled_tasks(name);
+
+CREATE TABLE IF NOT EXISTS i18n_translations (
+    id SERIAL PRIMARY KEY,
+    lang VARCHAR(8) NOT NULL DEFAULT 'zh-CN',
+    key VARCHAR(256) NOT NULL,
+    value TEXT NOT NULL,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(lang, key)
+);
+
+CREATE INDEX idx_i18n_lang ON i18n_translations(lang);
+
+INSERT INTO i18n_translations (lang, key, value) VALUES
+('zh-CN', 'welcome', '欢迎来到FurBBS'),
+('zh-CN', 'email_code_subject', '您的验证码'),
+('zh-CN', 'email_code_content', '您的验证码是：{code}，有效期{minutes}分钟'),
+('en', 'welcome', 'Welcome to FurBBS'),
+('en', 'email_code_subject', 'Your verification code'),
+('en', 'email_code_content', 'Your verification code is: {code}, valid for {minutes} minutes');

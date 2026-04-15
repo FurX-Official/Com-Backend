@@ -18,13 +18,12 @@ include(trpc)
 
 find_package(PostgreSQL REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(Boost REQUIRED COMPONENTS system thread)
-find_package(nlohmann_json 3.2.0 REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system thread filesystem)
+find_package(yaml-cpp REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(CURL REQUIRED)
+find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(yaml-cpp REQUIRED)
-find_package(OpenSSL REQUIRED)
 
 include_directories(
     ${PROJECT_SOURCE_DIR}
@@ -65,7 +64,6 @@ target_link_libraries(furbbs_server
     trpc
     ${PostgreSQL_LIBRARIES}
     ${Boost_LIBRARIES}
-    ${OPENSSL_LIBRARIES}
     CURL::libcurl
     spdlog::spdlog
     nlohmann_json::nlohmann_json
@@ -76,7 +74,6 @@ target_link_libraries(furbbs_server
     jwt-cpp
     OpenSSL::SSL
     OpenSSL::Crypto
-    ${CURL_LIBRARIES}
 )
 
 install(TARGETS furbbs_server DESTINATION ${CMAKE_INSTALL_BINDIR})

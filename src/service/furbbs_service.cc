@@ -8,6 +8,7 @@
 #include "../common/security.h"
 #include "../common/content_filter.h"
 #include "../common/open_platform.h"
+#include "../common/infrastructure.h"
 
 namespace furbbs::service {
 
@@ -3043,6 +3044,208 @@ static const int64_t SERVER_START_TIME = std::chrono::duration_cast<std::chrono:
                 rank++;
             }
         });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::UploadFile(::trpc::ServerContextPtr context,
+                                            const ::furbbs::UploadFileRequest* request,
+                                            ::furbbs::UploadFileResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        if (!furbbs::common::FileStorage::Instance().ValidateSize(request->content().size())) {
+            response->set_code(400);
+            response->set_message("File too large (max 10MB)");
+            return ::trpc::kSuccStatus;
+        }
+
+        if (!request->content_type().empty() && 
+            !furbbs::common::FileStorage::Instance().ValidateMimeType(request->content_type())) {
+            response->set_code(400);
+            response->set_message("File type not allowed");
+            return ::trpc::kSuccStatus;
+        }
+
+        auto file_info = furbbs::common::FileStorage::Instance().Save(
+            request->content(),
+            request->filename(),
+            request->content_type(),
+            user_opt->id,
+            request->purpose()
+        );
+
+        response->set_file_id(file_info.id);
+        response->set_url(file_info.url);
+        response->set_size(file_info.size);
+        response->set_mime_type(file_info.mime_type);
+
+        furbbs::common::AuditLogger::Instance().Log(user_opt->id, "UPLOAD_FILE", "", 
+            "File: " + request->filename() + ", Size: " + std::to_string(file_info.size));
+
+        response->set_code(200);
+        response->set_message("File uploaded successfully");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetFile(::trpc::ServerContextPtr context,
+                                         const ::furbbs::GetFileRequest* request,
+                                         ::furbbs::GetFileResponse* response) {
+    try {
+        auto file_info = furbbs::common::FileStorage::Instance().Get(request->file_id());
+        if (!file_info) {
+            response->set_code(404);
+            response->set_message("File not found");
+            return ::trpc::kSuccStatus;
+        }
+
+        response->set_url(file_info->url);
+        response->set_filename(file_info->original_name);
+        response->set_size(file_info->size);
+        response->set_mime_type(file_info->mime_type);
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::DeleteFile(::trpc::ServerContextPtr context,
+                                            const ::furbbs::DeleteFileRequest* request,
+                                            ::furbbs::DeleteFileResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        bool success = furbbs::common::FileStorage::Instance().Delete(
+            request->file_id(), 
+            user_opt->id
+        );
+
+        if (!success) {
+            response->set_code(404);
+            response->set_message("File not found or no permission");
+            return ::trpc::kSuccStatus;
+        }
+
+        furbbs::common::AuditLogger::Instance().Log(user_opt->id, "DELETE_FILE", "", 
+            "File ID: " + request->file_id());
+
+        response->set_code(200);
+        response->set_message("File deleted successfully");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::SendEmailCode(::trpc::ServerContextPtr context,
+                                               const ::furbbs::SendEmailCodeRequest* request,
+                                               ::furbbs::SendEmailCodeResponse* response) {
+    try {
+        bool success = furbbs::common::EmailCodeManager::Instance().SendCode(
+            request->email(),
+            request->type()
+        );
+
+        if (!success) {
+            response->set_code(500);
+            response->set_message("Failed to send email code");
+            return ::trpc::kSuccStatus;
+        }
+
+        response->set_expire_seconds(furbbs::common::EmailCodeManager::EXPIRE_SECONDS);
+        response->set_code(200);
+        response->set_message("Verification code sent");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::VerifyEmailCode(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::VerifyEmailCodeRequest* request,
+                                                 ::furbbs::VerifyEmailCodeResponse* response) {
+    try {
+        bool valid = furbbs::common::EmailCodeManager::Instance().VerifyCode(
+            request->email(),
+            request->code(),
+            request->type()
+        );
+
+        response->set_is_valid(valid);
+        
+        if (valid) {
+            response->set_code(200);
+            response->set_message("Verification successful");
+        } else {
+            response->set_code(400);
+            response->set_message("Invalid or expired code");
+        }
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetCacheStats(::trpc::ServerContextPtr context,
+                                               const ::furbbs::GetSystemMetricsResponse* request,
+                                               ::furbbs::GetCacheStatsResponse* response) {
+    try {
+        auto stats = furbbs::common::Cache::Instance().GetStats();
+        
+        auto* metrics = response->mutable_metrics();
+        metrics->set_hits(stats.hits);
+        metrics->set_misses(stats.misses);
+        metrics->set_hit_rate(stats.hits + stats.misses > 0 
+            ? static_cast<double>(stats.hits) / (stats.hits + stats.misses) 
+            : 0.0);
+        metrics->set_evictions(stats.evictions);
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetSystemMetrics(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::GetSystemMetricsResponse* request,
+                                                  ::furbbs::GetSystemMetricsResponse* response) {
+    try {
+        auto* metrics = response->mutable_metrics();
+        metrics->set_cpu_usage(furbbs::common::SystemMonitor::Instance().GetCpuUsage());
+        metrics->set_memory_usage_mb(furbbs::common::SystemMonitor::Instance().GetMemoryUsageMB());
+        metrics->set_disk_usage_gb(furbbs::common::SystemMonitor::Instance().GetDiskUsageGB());
+        metrics->set_database_connections(furbbs::common::SystemMonitor::Instance().GetDatabaseConnections());
+        metrics->set_active_users(furbbs::common::SystemMonitor::Instance().GetActiveUsers());
 
         response->set_code(200);
         response->set_message("Success");
