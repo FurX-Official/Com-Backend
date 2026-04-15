@@ -541,6 +541,16 @@ service FurBBSService {
     rpc DeleteDraft(DeleteDraftRequest) returns (DeleteDraftResponse);
     
     rpc ExportUserData(ExportDataRequest) returns (ExportDataResponse);
+    
+    rpc GetUserLevel(GetUserLevelRequest) returns (GetUserLevelResponse);
+    rpc DailyCheckIn(DailyCheckInRequest) returns (DailyCheckInResponse);
+    rpc GetCheckInStatus(GetCheckInStatusRequest) returns (GetCheckInStatusResponse);
+    
+    rpc SendFriendRequest(SendFriendRequestRequest) returns (SendFriendRequestResponse);
+    rpc AcceptFriendRequest(AcceptFriendRequestRequest) returns (AcceptFriendRequestResponse);
+    rpc GetFriendRequests(GetFriendRequestsRequest) returns (GetFriendRequestsResponse);
+    rpc GetFriends(GetFriendsRequest) returns (GetFriendsResponse);
+    rpc RemoveFriend(RemoveFriendRequest) returns (RemoveFriendResponse);
 }
 
 message HealthCheckRequest {}
@@ -933,4 +943,161 @@ message ExportDataResponse {
     string message = 2;
     string download_url = 3;
     map<string, int32> item_counts = 4;
+}
+
+message UserLevel {
+    int32 level = 1;
+    string name = 2;
+    int64 points = 3;
+    int64 next_level_points = 4;
+    string icon = 5;
+}
+
+message PointTransaction {
+    int64 id = 1;
+    string user_id = 2;
+    string type = 3;
+    int32 amount = 4;
+    string description = 5;
+    int64 created_at = 6;
+}
+
+message GetUserLevelRequest {
+    string user_id = 1;
+}
+
+message GetUserLevelResponse {
+    int32 code = 1;
+    string message = 2;
+    UserLevel level = 3;
+    int64 total_points = 4;
+    repeated PointTransaction history = 5;
+    int32 rank = 6;
+}
+
+message DailyCheckInRequest {
+    string access_token = 1;
+}
+
+message DailyCheckInResponse {
+    int32 code = 1;
+    string message = 2;
+    int32 points_earned = 3;
+    int32 consecutive_days = 4;
+    bool is_checked_in_today = 5;
+}
+
+message GetCheckInStatusRequest {
+    string access_token = 1;
+}
+
+message GetCheckInStatusResponse {
+    int32 code = 1;
+    string message = 2;
+    bool is_checked_in_today = 3;
+    int32 consecutive_days = 4;
+    repeated bool last_7_days = 5;
+}
+
+enum FriendStatus {
+    FRIEND_NONE = 0;
+    FRIEND_FOLLOWING = 1;
+    FRIEND_FOLLOWED = 2;
+    FRIEND_MUTUAL = 3;
+}
+
+message FriendRequest {
+    int64 id = 1;
+    string user_id = 2;
+    UserInfo user = 3;
+    string message = 4;
+    int64 created_at = 5;
+}
+
+message SendFriendRequestRequest {
+    string access_token = 1;
+    string target_user_id = 2;
+    string message = 3;
+}
+
+message SendFriendRequestResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message AcceptFriendRequestRequest {
+    string access_token = 1;
+    int64 request_id = 2;
+}
+
+message AcceptFriendRequestResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GetFriendRequestsRequest {
+    string access_token = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message GetFriendRequestsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated FriendRequest received = 3;
+    repeated FriendRequest sent = 4;
+    int32 total = 5;
+}
+
+message GetFriendsRequest {
+    string access_token = 1;
+    string user_id = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetFriendsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated UserInfo friends = 3;
+    int32 total = 4;
+    FriendStatus status = 5;
+}
+
+message RemoveFriendRequest {
+    string access_token = 1;
+    string target_user_id = 2;
+}
+
+message RemoveFriendResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message Mention {
+    int64 id = 1;
+    string user_id = 2;
+    UserInfo user = 3;
+    int64 post_id = 4;
+    int64 comment_id = 5;
+    int64 created_at = 6;
+    bool is_read = 7;
+}
+
+message CommentReply {
+    int64 id = 1;
+    int64 comment_id = 2;
+    string author_id = 3;
+    UserInfo author = 4;
+    string content = 5;
+    int64 created_at = 6;
+}
+
+message AuditLog {
+    int64 id = 1;
+    string user_id = 2;
+    string action = 3;
+    string ip = 4;
+    string details = 5;
+    int64 created_at = 6;
 }

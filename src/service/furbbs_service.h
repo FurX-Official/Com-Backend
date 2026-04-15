@@ -195,8 +195,40 @@ public:
                               ::furbbs::DeleteDraftResponse* response) override;
 
     ::trpc::Status ExportUserData(::trpc::ServerContextPtr context,
-                                  const ::furbbs::ExportDataRequest* request,
-                                  ::furbbs::ExportDataResponse* response) override;
+                                   const ::furbbs::ExportDataRequest* request,
+                                   ::furbbs::ExportDataResponse* response) override;
+
+    ::trpc::Status GetUserLevel(::trpc::ServerContextPtr context,
+                               const ::furbbs::GetUserLevelRequest* request,
+                               ::furbbs::GetUserLevelResponse* response) override;
+
+    ::trpc::Status DailyCheckIn(::trpc::ServerContextPtr context,
+                               const ::furbbs::DailyCheckInRequest* request,
+                               ::furbbs::DailyCheckInResponse* response) override;
+
+    ::trpc::Status GetCheckInStatus(::trpc::ServerContextPtr context,
+                                    const ::furbbs::GetCheckInStatusRequest* request,
+                                    ::furbbs::GetCheckInStatusResponse* response) override;
+
+    ::trpc::Status SendFriendRequest(::trpc::ServerContextPtr context,
+                                    const ::furbbs::SendFriendRequestRequest* request,
+                                    ::furbbs::SendFriendRequestResponse* response) override;
+
+    ::trpc::Status AcceptFriendRequest(::trpc::ServerContextPtr context,
+                                      const ::furbbs::AcceptFriendRequestRequest* request,
+                                      ::furbbs::AcceptFriendRequestResponse* response) override;
+
+    ::trpc::Status GetFriendRequests(::trpc::ServerContextPtr context,
+                                    const ::furbbs::GetFriendRequestsRequest* request,
+                                    ::furbbs::GetFriendRequestsResponse* response) override;
+
+    ::trpc::Status GetFriends(::trpc::ServerContextPtr context,
+                             const ::furbbs::GetFriendsRequest* request,
+                             ::furbbs::GetFriendsResponse* response) override;
+
+    ::trpc::Status RemoveFriend(::trpc::ServerContextPtr context,
+                               const ::furbbs::RemoveFriendRequest* request,
+                               ::furbbs::RemoveFriendResponse* response) override;
 };
 
 } // namespace furbbs::service

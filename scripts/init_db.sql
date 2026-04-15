@@ -302,3 +302,88 @@ CREATE TABLE IF NOT EXISTS drafts (
 );
 
 CREATE INDEX idx_drafts_user_id ON drafts(user_id);
+
+CREATE TABLE IF NOT EXISTS user_points (
+    user_id VARCHAR(128) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    points INTEGER DEFAULT 0,
+    level INTEGER DEFAULT 1,
+    last_check_in DATE,
+    consecutive_check_ins INTEGER DEFAULT 0,
+    updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS point_transactions (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(32) NOT NULL,
+    amount INTEGER NOT NULL,
+    description VARCHAR(256),
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_point_transactions_user_id ON point_transactions(user_id);
+
+INSERT INTO user_points (user_id, points, level)
+SELECT id, 0, 1 FROM users
+WHERE NOT EXISTS (SELECT 1 FROM user_points WHERE user_points.user_id = users.id);
+
+CREATE TABLE IF NOT EXISTS friend_requests (
+    id SERIAL PRIMARY KEY,
+    sender_id VARCHAR(128) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id VARCHAR(128) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message VARCHAR(512),
+    status VARCHAR(32) DEFAULT 'PENDING',
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(sender_id, receiver_id)
+);
+
+CREATE INDEX idx_friend_requests_receiver ON friend_requests(receiver_id);
+CREATE INDEX idx_friend_requests_sender ON friend_requests(sender_id);
+
+CREATE TABLE IF NOT EXISTS friendships (
+    id SERIAL PRIMARY KEY,
+    user1_id VARCHAR(128) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user2_id VARCHAR(128) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(user1_id, user2_id)
+);
+
+CREATE INDEX idx_friendships_user1 ON friendships(user1_id);
+CREATE INDEX idx_friendships_user2 ON friendships(user2_id);
+
+CREATE TABLE IF NOT EXISTS mentions (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    mentioned_by VARCHAR(128) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    comment_id BIGINT REFERENCES comments(id) ON DELETE CASCADE,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_mentions_user_id ON mentions(user_id);
+
+CREATE TABLE IF NOT EXISTS sensitive_words (
+    id SERIAL PRIMARY KEY,
+    word VARCHAR(128) NOT NULL UNIQUE,
+    level INTEGER DEFAULT 1,
+    replacement VARCHAR(128) DEFAULT '***',
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    action VARCHAR(64) NOT NULL,
+    ip VARCHAR(64),
+    details TEXT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX idx_audit_logs_action ON audit_logs(action);
+
+INSERT INTO sensitive_words (word, level, replacement) VALUES
+('脏话1', 2, '***'),
+('脏话2', 2, '***'),
+('广告', 1, '**');
