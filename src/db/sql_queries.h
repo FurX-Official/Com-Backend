@@ -902,6 +902,124 @@ const std::string MOD_GET_QUEUE = R"(
     SELECT * FROM moderation_queue
     WHERE status = $1
     ORDER BY submitted_at DESC LIMIT $2 OFFSET $3
+);
+
+const std::string GALLERY_CREATE_ITEM = R"(
+    INSERT INTO gallery_items (user_id, fursona_id, title, description,
+    file_url, thumbnail_url, file_type, file_size, image_width, image_height,
+    artist_name, artist_url, tags, is_public, is_nsfw, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+    EXTRACT(EPOCH FROM NOW()) * 1000)
+    RETURNING id
+)";
+const std::string GALLERY_GET_BY_USER = R"(
+    SELECT g.*, u.username, u.avatar FROM gallery_items g
+    JOIN users u ON g.user_id = u.id
+    WHERE g.user_id = $1 AND ($2 OR g.is_public)
+    ORDER BY created_at DESC LIMIT $3 OFFSET $4
+)";
+const std::string GALLERY_GET_BY_ID = R"(
+    SELECT g.*, u.username, u.avatar FROM gallery_items g
+    JOIN users u ON g.user_id = u.id
+    WHERE g.id = $1
+)";
+const std::string GALLERY_INC_VIEW = R"(
+    UPDATE gallery_items SET view_count = view_count + 1 WHERE id = $1
+)";
+const std::string GALLERY_LIKE = R"(
+    INSERT INTO gallery_likes (item_id, user_id) VALUES ($1, $2)
+    ON CONFLICT DO NOTHING;
+    UPDATE gallery_items SET like_count = like_count + 1 WHERE id = $1
+)";
+const std::string GALLERY_UNLIKE = R"(
+    DELETE FROM gallery_likes WHERE item_id = $1 AND user_id = $2;
+    UPDATE gallery_items SET like_count = like_count - 1 WHERE id = $1
+)";
+const std::string GALLERY_DELETE = R"(
+    DELETE FROM gallery_items WHERE id = $1 AND user_id = $2
+)";
+
+const std::string ALBUM_CREATE = R"(
+    INSERT INTO gallery_albums (user_id, title, description, cover_image, is_public, created_at)
+    VALUES ($1, $2, $3, $4, $5, EXTRACT(EPOCH FROM NOW()) * 1000)
+    RETURNING id
+)";
+const std::string ALBUM_ADD_ITEM = R"(
+    INSERT INTO album_items (album_id, item_id, sort_order, added_at)
+    VALUES ($1, $2, $3, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT DO NOTHING;
+    UPDATE gallery_albums SET item_count = item_count + 1 WHERE id = $1
+)";
+const std::string ALBUM_GET_BY_USER = R"(
+    SELECT * FROM gallery_albums
+    WHERE user_id = $1 AND ($2 OR is_public)
+    ORDER BY created_at DESC
+)";
+
+const std::string SEARCH_INDEX_UPSERT = R"(
+    INSERT INTO search_index (content_type, content_id, title, content_text,
+    author_id, tags, is_public, weight, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT (content_type, content_id) DO UPDATE SET
+    title = $3, content_text = $4, tags = $6, is_public = $7, weight = $8,
+    updated_at = EXTRACT(EPOCH FROM NOW()) * 1000
+)";
+const std::string SEARCH_FULLTEXT = R"(
+    SELECT *, ts_rank(to_tsvector('english', title || ' ' || content_text),
+           plainto_tsquery('english', $1)) as rank
+    FROM search_index
+    WHERE to_tsvector('english', title || ' ' || content_text) @@ plainto_tsquery('english', $1)
+    AND is_public = true
+    ORDER BY rank DESC, weight DESC, updated_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string PRESENCE_UPDATE = R"(
+    INSERT INTO user_presence (user_id, status, last_active, last_ip, user_agent)
+    VALUES ($1, $2, EXTRACT(EPOCH FROM NOW()) * 1000, $3, $4)
+    ON CONFLICT (user_id) DO UPDATE SET
+    status = $2, last_active = EXTRACT(EPOCH FROM NOW()) * 1000,
+    last_ip = $3, user_agent = $4
+)";
+const std::string PRESENCE_GET = R"(
+    SELECT user_id, CASE WHEN is_invisible THEN 'offline' ELSE status END as status,
+    CASE WHEN is_invisible THEN 0 ELSE last_active END as last_active
+    FROM user_presence WHERE user_id = $1
+)";
+const std::string PRESENCE_GET_ONLINE = R"(
+    SELECT user_id, status, last_active FROM user_presence
+    WHERE status = 'online' AND is_invisible = false
+    ORDER BY last_active DESC LIMIT $1
+)";
+
+const std::string EXPORT_CREATE_TASK = R"(
+    INSERT INTO export_tasks (user_id, task_type, status, created_at)
+    VALUES ($1, $2, 'pending', EXTRACT(EPOCH FROM NOW()) * 1000)
+    RETURNING id
+)";
+const std::string EXPORT_GET_TASKS = R"(
+    SELECT * FROM export_tasks WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10
+)";
+
+const std::string CONFIG_GET_ALL = R"(
+    SELECT config_key, config_value, config_type, is_public FROM system_configs
+)";
+const std::string CONFIG_SET = R"(
+    INSERT INTO system_configs (config_key, config_value, config_type, description, updated_at)
+    VALUES ($1, $2, $3, $4, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT (config_key) DO UPDATE SET
+    config_value = $2, config_type = $3, description = $4,
+    updated_at = EXTRACT(EPOCH FROM NOW()) * 1000
+)";
+
+const std::string AUDIT_LOG = R"(
+    INSERT INTO audit_logs (user_id, action, resource_type, resource_id,
+    old_value, new_value, ip_address, user_agent, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, EXTRACT(EPOCH FROM NOW()) * 1000)
+)";
+const std::string AUDIT_GET_BY_USER = R"(
+    SELECT * FROM audit_logs WHERE user_id = $1
+    ORDER BY created_at DESC LIMIT $2 OFFSET $3
 )";
 
 } // namespace furbbs::db::sql

@@ -407,4 +407,66 @@ namespace furbbs::service {
     return ::furbbs::controller::ReviewModeration(context, request, response);
 }
 
+// ==================== 核心基础功能接口 ====================
+
+::trpc::Status FurBBSServiceImpl::CreateGalleryItem(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::CreateGalleryItemRequest* request,
+                                                      ::furbbs::CreateGalleryItemResponse* response) {
+    return ::furbbs::controller::CreateGalleryItem(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserGallery(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetUserGalleryRequest* request,
+                                                   ::furbbs::GetUserGalleryResponse* response) {
+    return ::furbbs::controller::GetUserGallery(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::LikeGalleryItem(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::LikeGalleryItemRequest* request,
+                                                    ::furbbs::LikeGalleryItemResponse* response) {
+    return ::furbbs::controller::LikeGalleryItem(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::CreateAlbum(::trpc::ServerContextPtr context,
+                                                const ::furbbs::CreateAlbumRequest* request,
+                                                ::furbbs::CreateAlbumResponse* response) {
+    return ::furbbs::controller::CreateAlbum(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::SearchContent(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::SearchContentRequest* request,
+                                                  ::furbbs::SearchContentResponse* response) {
+    return ::furbbs::controller::SearchContent(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::UpdatePresence(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::UpdatePresenceRequest* request,
+                                                   ::furbbs::UpdatePresenceResponse* response) {
+    return ::furbbs::controller::UpdatePresence(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetOnlineUsers(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::GetOnlineUsersRequest* request,
+                                                  ::furbbs::GetOnlineUsersResponse* response) {
+    return ::furbbs::controller::GetOnlineUsers(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::RequestDataExport(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::RequestDataExportRequest* request,
+                                                     ::furbbs::RequestDataExportResponse* response) {
+    return ::furbbs::controller::RequestDataExport(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetPublicConfigs(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::GetPublicConfigsRequest* request,
+                                                    ::furbbs::GetPublicConfigsResponse* response) {
+    return ::furbbs::controller::GetPublicConfigs(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetAuditLogs(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::GetAuditLogsRequest* request,
+                                                 ::furbbs::GetAuditLogsResponse* response) {
+    return ::furbbs::controller::GetAuditLogs(context, request, response);
+}
+
 } // namespace furbbs::service

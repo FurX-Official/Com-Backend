@@ -1913,3 +1913,120 @@ CREATE INDEX idx_content_ratings ON content_ratings(content_type, content_id);
 CREATE INDEX idx_creation_perms ON creation_permissions(author_user_id, authorized_user_id);
 CREATE INDEX idx_interactions ON fursona_interactions(from_fursona_id, to_fursona_id);
 CREATE INDEX idx_moderation_queue ON moderation_queue(status, submitted_at DESC);
+
+CREATE TABLE IF NOT EXISTS gallery_items (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    fursona_id BIGINT REFERENCES fursonas(id) ON DELETE SET NULL,
+    title VARCHAR(128) NOT NULL,
+    description TEXT,
+    file_url VARCHAR(256) NOT NULL,
+    thumbnail_url VARCHAR(256),
+    file_type VARCHAR(32) NOT NULL,
+    file_size BIGINT DEFAULT 0,
+    image_width INT,
+    image_height INT,
+    artist_name VARCHAR(64),
+    artist_url VARCHAR(256),
+    tags VARCHAR(64)[],
+    is_public BOOLEAN DEFAULT true,
+    is_nsfw BOOLEAN DEFAULT false,
+    view_count INT DEFAULT 0,
+    like_count INT DEFAULT 0,
+    comment_count INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS gallery_albums (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(128) NOT NULL,
+    description TEXT,
+    cover_image VARCHAR(256),
+    is_public BOOLEAN DEFAULT true,
+    item_count INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS album_items (
+    album_id BIGINT REFERENCES gallery_albums(id) ON DELETE CASCADE,
+    item_id BIGINT REFERENCES gallery_items(id) ON DELETE CASCADE,
+    sort_order INT DEFAULT 0,
+    added_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (album_id, item_id)
+);
+
+CREATE TABLE IF NOT EXISTS search_index (
+    id SERIAL PRIMARY KEY,
+    content_type VARCHAR(32) NOT NULL,
+    content_id BIGINT NOT NULL,
+    title VARCHAR(256) NOT NULL,
+    content_text TEXT,
+    author_id VARCHAR(128),
+    tags VARCHAR(64)[],
+    is_public BOOLEAN DEFAULT true,
+    weight INT DEFAULT 1,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(content_type, content_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_presence (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE PRIMARY KEY,
+    status VARCHAR(16) DEFAULT 'offline',
+    last_active BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    last_ip VARCHAR(64),
+    user_agent TEXT,
+    is_invisible BOOLEAN DEFAULT false
+);
+
+CREATE TABLE IF NOT EXISTS export_tasks (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    task_type VARCHAR(32) NOT NULL,
+    status VARCHAR(16) DEFAULT 'pending',
+    file_url VARCHAR(256),
+    file_size BIGINT DEFAULT 0,
+    expires_at BIGINT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    completed_at BIGINT
+);
+
+CREATE TABLE IF NOT EXISTS system_configs (
+    config_key VARCHAR(64) PRIMARY KEY,
+    config_value TEXT,
+    config_type VARCHAR(32) DEFAULT 'string',
+    description TEXT,
+    is_public BOOLEAN DEFAULT false,
+    updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    action VARCHAR(64) NOT NULL,
+    resource_type VARCHAR(32),
+    resource_id BIGINT,
+    old_value TEXT,
+    new_value TEXT,
+    ip_address VARCHAR(64),
+    user_agent TEXT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS gallery_likes (
+    item_id BIGINT REFERENCES gallery_items(id) ON DELETE CASCADE,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (item_id, user_id)
+);
+
+CREATE INDEX idx_gallery_user ON gallery_items(user_id, created_at DESC);
+CREATE INDEX idx_gallery_fursona ON gallery_items(fursona_id);
+CREATE INDEX idx_gallery_tags ON gallery_items USING GIN(tags);
+CREATE INDEX idx_search_fulltext ON search_index USING GIN(to_tsvector('english', title || ' ' || content_text));
+CREATE INDEX idx_search_tags ON search_index USING GIN(tags);
+CREATE INDEX idx_albums_user ON gallery_albums(user_id);
+CREATE INDEX idx_presence_status ON user_presence(status, last_active DESC);
+CREATE INDEX idx_audit_user ON audit_logs(user_id, created_at DESC);
+CREATE INDEX idx_audit_action ON audit_logs(action, created_at DESC);
