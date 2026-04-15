@@ -469,4 +469,82 @@ namespace furbbs::service {
     return ::furbbs::controller::GetAuditLogs(context, request, response);
 }
 
+::trpc::Status FurBBSServiceImpl::BlockUser(::trpc::ServerContextPtr context,
+                                             const ::furbbs::BlockUserRequest* request,
+                                             ::furbbs::BlockUserResponse* response) {
+    return ::furbbs::controller::BlockUser(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::UnblockUser(::trpc::ServerContextPtr context,
+                                               const ::furbbs::UnblockUserRequest* request,
+                                               ::furbbs::UnblockUserResponse* response) {
+    return ::furbbs::controller::UnblockUser(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetBlockedUsers(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetBlockedUsersRequest* request,
+                                                   ::furbbs::GetBlockedUsersResponse* response) {
+    return ::furbbs::controller::GetBlockedUsers(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserSessions(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetUserSessionsRequest* request,
+                                                   ::furbbs::GetUserSessionsResponse* response) {
+    return ::furbbs::controller::GetUserSessions(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::RevokeSession(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::RevokeSessionRequest* request,
+                                                 ::furbbs::RevokeSessionResponse* response) {
+    return ::furbbs::controller::RevokeSession(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetLoginHistory(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetLoginHistoryRequest* request,
+                                                   ::furbbs::GetLoginHistoryResponse* response) {
+    return ::furbbs::controller::GetLoginHistory(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetAnnouncements(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::GetAnnouncementsRequest* request,
+                                                    ::furbbs::GetAnnouncementsResponse* response) {
+    return ::furbbs::controller::GetAnnouncements(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::CreateAnnouncement(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::CreateAnnouncementRequest* request,
+                                                      ::furbbs::CreateAnnouncementResponse* response) {
+    return ::furbbs::controller::CreateAnnouncement(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetSecurityAlerts(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::GetSecurityAlertsRequest* request,
+                                                     ::furbbs::GetSecurityAlertsResponse* response) {
+    return ::furbbs::controller::GetSecurityAlerts(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::ResolveAlert(::trpc::ServerContextPtr context,
+                                                const ::furbbs::ResolveAlertRequest* request,
+                                                ::furbbs::ResolveAlertResponse* response) {
+    return ::furbbs::controller::ResolveAlert(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::AddIpToBlacklist(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::AddIpToBlacklistRequest* request,
+                                                    ::furbbs::AddIpToBlacklistResponse* response) {
+    return ::furbbs::controller::AddIpToBlacklist(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::CreateWebhook(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::CreateWebhookRequest* request,
+                                                 ::furbbs::CreateWebhookResponse* response) {
+    return ::furbbs::controller::CreateWebhook(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserWebhooks(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetUserWebhooksRequest* request,
+                                                   ::furbbs::GetUserWebhooksResponse* response) {
+    return ::furbbs::controller::GetUserWebhooks(context, request, response);
+}
+
 } // namespace furbbs::service

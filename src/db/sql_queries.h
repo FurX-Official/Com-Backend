@@ -1020,6 +1020,111 @@ const std::string AUDIT_LOG = R"(
 const std::string AUDIT_GET_BY_USER = R"(
     SELECT * FROM audit_logs WHERE user_id = $1
     ORDER BY created_at DESC LIMIT $2 OFFSET $3
+);
+
+const std::string IP_BLACKLIST_ADD = R"(
+    INSERT INTO ip_blacklist (ip_address, reason, banned_by, expires_at, created_at)
+    VALUES ($1, $2, $3, $4, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT (ip_address) DO UPDATE SET
+    reason = $2, banned_by = $3, expires_at = $4
+)";
+const std::string IP_BLACKLIST_CHECK = R"(
+    SELECT 1 FROM ip_blacklist
+    WHERE ip_address = $1 AND (expires_at IS NULL OR expires_at > EXTRACT(EPOCH FROM NOW()) * 1000)
+)";
+const std::string IP_BLACKLIST_REMOVE = R"(
+    DELETE FROM ip_blacklist WHERE ip_address = $1
+)";
+
+const std::string RATE_LIMIT_INC = R"(
+    INSERT INTO rate_limits (identifier, limit_type, request_count, window_start)
+    VALUES ($1, $2, 1, $3)
+    ON CONFLICT (identifier, limit_type) DO UPDATE SET
+    request_count = rate_limits.request_count + 1
+    RETURNING request_count
+)";
+const std::string RATE_LIMIT_RESET = R"(
+    DELETE FROM rate_limits WHERE identifier = $1 AND limit_type = $2
+)";
+
+const std::string SESSION_CREATE = R"(
+    INSERT INTO user_sessions (session_id, user_id, device_info, ip_address,
+    location, user_agent, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, EXTRACT(EPOCH FROM NOW()) * 1000)
+)";
+const std::string SESSION_GET_BY_USER = R"(
+    SELECT * FROM user_sessions WHERE user_id = $1 ORDER BY last_active DESC
+)";
+const std::string SESSION_REVOKE = R"(
+    DELETE FROM user_sessions WHERE session_id = $1 AND user_id = $2
+)";
+const std::string SESSION_UPDATE = R"(
+    UPDATE user_sessions SET last_active = EXTRACT(EPOCH FROM NOW()) * 1000
+    WHERE session_id = $1
+)";
+
+const std::string LOGIN_HISTORY_ADD = R"(
+    INSERT INTO login_history (user_id, ip_address, location, device_info,
+    user_agent, was_successful, failure_reason, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, EXTRACT(EPOCH FROM NOW()) * 1000)
+)";
+const std::string LOGIN_HISTORY_GET = R"(
+    SELECT * FROM login_history WHERE user_id = $1
+    ORDER BY created_at DESC LIMIT $2 OFFSET $3
+)";
+
+const std::string USER_BLOCK_ADD = R"(
+    INSERT INTO user_blocks (blocker_id, blocked_id, block_type, reason, created_at)
+    VALUES ($1, $2, $3, $4, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT DO NOTHING
+)";
+const std::string USER_BLOCK_REMOVE = R"(
+    DELETE FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2
+)";
+const std::string USER_BLOCK_CHECK = R"(
+    SELECT 1 FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2
+)";
+const std::string USER_BLOCK_LIST = R"(
+    SELECT blocked_id, block_type, created_at FROM user_blocks WHERE blocker_id = $1
+)";
+
+const std::string ANNOUNCEMENT_CREATE = R"(
+    INSERT INTO system_announcements (title, content, announcement_type,
+    priority, show_until, created_by, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, EXTRACT(EPOCH FROM NOW()) * 1000)
+    RETURNING id
+)";
+const std::string ANNOUNCEMENT_GET_ACTIVE = R"(
+    SELECT * FROM system_announcements
+    WHERE is_active = true AND (show_until IS NULL OR show_until > EXTRACT(EPOCH FROM NOW()) * 1000)
+    ORDER BY priority DESC, created_at DESC LIMIT 10
+)";
+
+const std::string WEBHOOK_CREATE = R"(
+    INSERT INTO webhook_endpoints (user_id, endpoint_url, secret, events, created_at)
+    VALUES ($1, $2, $3, $4, EXTRACT(EPOCH FROM NOW()) * 1000)
+    RETURNING id
+)";
+const std::string WEBHOOK_GET_BY_USER = R"(
+    SELECT * FROM webhook_endpoints WHERE user_id = $1
+)";
+const std::string WEBHOOK_LOG = R"(
+    INSERT INTO webhook_logs (endpoint_id, event_type, request_body,
+    response_status, response_body, created_at)
+    VALUES ($1, $2, $3, $4, $5, EXTRACT(EPOCH FROM NOW()) * 1000)
+)";
+
+const std::string ALERT_CREATE = R"(
+    INSERT INTO security_alerts (user_id, alert_type, severity, details,
+    ip_address, created_at)
+    VALUES ($1, $2, $3, $4, $5, EXTRACT(EPOCH FROM NOW()) * 1000)
+)";
+const std::string ALERT_GET_USER = R"(
+    SELECT * FROM security_alerts WHERE user_id = $1 AND is_resolved = false
+    ORDER BY created_at DESC
+)";
+const std::string ALERT_RESOLVE = R"(
+    UPDATE security_alerts SET is_resolved = true WHERE id = $1 AND user_id = $2
 )";
 
 } // namespace furbbs::db::sql

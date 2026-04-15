@@ -2030,3 +2030,118 @@ CREATE INDEX idx_albums_user ON gallery_albums(user_id);
 CREATE INDEX idx_presence_status ON user_presence(status, last_active DESC);
 CREATE INDEX idx_audit_user ON audit_logs(user_id, created_at DESC);
 CREATE INDEX idx_audit_action ON audit_logs(action, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS ip_blacklist (
+    id SERIAL PRIMARY KEY,
+    ip_address VARCHAR(64) UNIQUE NOT NULL,
+    reason VARCHAR(256),
+    banned_by VARCHAR(128),
+    expires_at BIGINT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS rate_limits (
+    id SERIAL PRIMARY KEY,
+    identifier VARCHAR(128) NOT NULL,
+    limit_type VARCHAR(32) NOT NULL,
+    request_count INT DEFAULT 0,
+    window_start BIGINT NOT NULL,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(identifier, limit_type)
+);
+
+CREATE TABLE IF NOT EXISTS api_signatures (
+    api_key VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    secret_key VARCHAR(128) NOT NULL,
+    algorithm VARCHAR(32) DEFAULT 'HMAC-SHA256',
+    is_active BOOLEAN DEFAULT true,
+    expires_at BIGINT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+    session_id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    device_info JSONB,
+    ip_address VARCHAR(64),
+    location VARCHAR(128),
+    user_agent TEXT,
+    last_active BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS login_history (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    ip_address VARCHAR(64),
+    location VARCHAR(128),
+    device_info JSONB,
+    user_agent TEXT,
+    was_successful BOOLEAN DEFAULT true,
+    failure_reason VARCHAR(64),
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS user_blocks (
+    blocker_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    blocked_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    block_type VARCHAR(32) DEFAULT 'all',
+    reason TEXT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (blocker_id, blocked_id)
+);
+
+CREATE TABLE IF NOT EXISTS system_announcements (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(128) NOT NULL,
+    content TEXT NOT NULL,
+    announcement_type VARCHAR(32) DEFAULT 'normal',
+    priority INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    show_until BIGINT,
+    created_by VARCHAR(128),
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS webhook_endpoints (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    endpoint_url VARCHAR(256) NOT NULL,
+    secret VARCHAR(128),
+    events VARCHAR(64)[],
+    is_active BOOLEAN DEFAULT true,
+    last_called_at BIGINT,
+    failure_count INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS webhook_logs (
+    id SERIAL PRIMARY KEY,
+    endpoint_id BIGINT REFERENCES webhook_endpoints(id) ON DELETE CASCADE,
+    event_type VARCHAR(64) NOT NULL,
+    request_body TEXT,
+    response_status INT,
+    response_body TEXT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS security_alerts (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    alert_type VARCHAR(64) NOT NULL,
+    severity VARCHAR(16) DEFAULT 'medium',
+    details JSONB,
+    ip_address VARCHAR(64),
+    is_resolved BOOLEAN DEFAULT false,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_ip_blacklist ON ip_blacklist(ip_address, expires_at);
+CREATE INDEX idx_rate_limits ON rate_limits(identifier, limit_type);
+CREATE INDEX idx_sessions_user ON user_sessions(user_id, last_active DESC);
+CREATE INDEX idx_login_user ON login_history(user_id, created_at DESC);
+CREATE INDEX idx_blocks_blocker ON user_blocks(blocker_id);
+CREATE INDEX idx_announcements_active ON system_announcements(is_active, priority DESC);
+CREATE INDEX idx_webhooks_user ON webhook_endpoints(user_id);
+CREATE INDEX idx_alerts_user ON security_alerts(user_id, is_resolved);
