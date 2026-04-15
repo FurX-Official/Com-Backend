@@ -315,24 +315,6 @@ namespace furbbs::service {
 
 // ==================== Furry核心功能接口 ====================
 
-::trpc::Status FurBBSServiceImpl::GenerateFursonaPrompt(::trpc::ServerContextPtr context,
-                                                          const ::furbbs::GenerateFursonaPromptRequest* request,
-                                                          ::furbbs::GenerateFursonaPromptResponse* response) {
-    return ::furbbs::controller::GenerateFursonaPrompt(context, request, response);
-}
-
-::trpc::Status FurBBSServiceImpl::SavePrompt(::trpc::ServerContextPtr context,
-                                               const ::furbbs::SavePromptRequest* request,
-                                               ::furbbs::SavePromptResponse* response) {
-    return ::furbbs::controller::SavePrompt(context, request, response);
-}
-
-::trpc::Status FurBBSServiceImpl::GetPrompts(::trpc::ServerContextPtr context,
-                                              const ::furbbs::GetPromptsRequest* request,
-                                              ::furbbs::GetPromptsResponse* response) {
-    return ::furbbs::controller::GetPrompts(context, request, response);
-}
-
 ::trpc::Status FurBBSServiceImpl::CreateFursonaRelation(::trpc::ServerContextPtr context,
                                                          const ::furbbs::CreateFursonaRelationRequest* request,
                                                          ::furbbs::CreateFursonaRelationResponse* response) {
@@ -367,60 +349,6 @@ namespace furbbs::service {
                                              const ::furbbs::LikeWorldRequest* request,
                                              ::furbbs::LikeWorldResponse* response) {
     return ::furbbs::controller::LikeWorld(context, request, response);
-}
-
-::trpc::Status FurBBSServiceImpl::PurchaseEventTicket(::trpc::ServerContextPtr context,
-                                                        const ::furbbs::PurchaseEventTicketRequest* request,
-                                                        ::furbbs::PurchaseEventTicketResponse* response) {
-    return ::furbbs::controller::PurchaseEventTicket(context, request, response);
-}
-
-::trpc::Status FurBBSServiceImpl::GetUserTickets(::trpc::ServerContextPtr context,
-                                                   const ::furbbs::GetUserTicketsRequest* request,
-                                                   ::furbbs::GetUserTicketsResponse* response) {
-    return ::furbbs::controller::GetUserTickets(context, request, response);
-}
-
-::trpc::Status FurBBSServiceImpl::CheckInTicket(::trpc::ServerContextPtr context,
-                                                  const ::furbbs::CheckInTicketRequest* request,
-                                                  ::furbbs::CheckInTicketResponse* response) {
-    return ::furbbs::controller::CheckInTicket(context, request, response);
-}
-
-::trpc::Status FurBBSServiceImpl::CreateMarketItem(::trpc::ServerContextPtr context,
-                                                     const ::furbbs::CreateMarketItemRequest* request,
-                                                     ::furbbs::CreateMarketItemResponse* response) {
-    return ::furbbs::controller::CreateMarketItem(context, request, response);
-}
-
-::trpc::Status FurBBSServiceImpl::GetMarketItems(::trpc::ServerContextPtr context,
-                                                  const ::furbbs::GetMarketItemsRequest* request,
-                                                  ::furbbs::GetMarketItemsResponse* response) {
-    return ::furbbs::controller::GetMarketItems(context, request, response);
-}
-
-::trpc::Status FurBBSServiceImpl::GetMarketItem(::trpc::ServerContextPtr context,
-                                                 const ::furbbs::GetMarketItemRequest* request,
-                                                 ::furbbs::GetMarketItemResponse* response) {
-    return ::furbbs::controller::GetMarketItem(context, request, response);
-}
-
-::trpc::Status FurBBSServiceImpl::FavoriteMarketItem(::trpc::ServerContextPtr context,
-                                                       const ::furbbs::FavoriteMarketItemRequest* request,
-                                                       ::furbbs::FavoriteMarketItemResponse* response) {
-    return ::furbbs::controller::FavoriteMarketItem(context, request, response);
-}
-
-::trpc::Status FurBBSServiceImpl::PurchaseMarketItem(::trpc::ServerContextPtr context,
-                                                      const ::furbbs::PurchaseMarketItemRequest* request,
-                                                      ::furbbs::PurchaseMarketItemResponse* response) {
-    return ::furbbs::controller::PurchaseMarketItem(context, request, response);
-}
-
-::trpc::Status FurBBSServiceImpl::GetMarketTransactions(::trpc::ServerContextPtr context,
-                                                          const ::furbbs::GetMarketTransactionsRequest* request,
-                                                          ::furbbs::GetMarketTransactionsResponse* response) {
-    return ::furbbs::controller::GetMarketTransactions(context, request, response);
 }
 
 } // namespace furbbs::service
