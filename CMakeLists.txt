@@ -22,7 +22,9 @@ find_package(Boost REQUIRED COMPONENTS system thread)
 find_package(nlohmann_json 3.2.0 REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(CURL REQUIRED)
+find_package(ZLIB REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 include_directories(
     ${PROJECT_SOURCE_DIR}
@@ -36,6 +38,8 @@ include_directories(
 file(GLOB_RECURSE SRC_FILES
     "${PROJECT_SOURCE_DIR}/src/*.cc"
     "${PROJECT_SOURCE_DIR}/src/*.cpp"
+    "${PROJECT_SOURCE_DIR}/src/common/*.cc"
+    "${PROJECT_SOURCE_DIR}/src/middleware/*.cc"
 )
 
 file(GLOB_RECURSE PROTO_FILES
@@ -62,12 +66,16 @@ target_link_libraries(furbbs_server
     ${PostgreSQL_LIBRARIES}
     ${Boost_LIBRARIES}
     ${OPENSSL_LIBRARIES}
-    ${CURL_LIBRARIES}
+    CURL::libcurl
     spdlog::spdlog
     nlohmann_json::nlohmann_json
     yaml-cpp
     pq
     pqxx
+    fmt
+    jwt-cpp
+    OpenSSL::SSL
+    OpenSSL::Crypto
 )
 
 install(TARGETS furbbs_server DESTINATION ${CMAKE_INSTALL_BINDIR})

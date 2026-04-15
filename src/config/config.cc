@@ -27,6 +27,12 @@ bool Config::Load(const std::string& config_file) {
         if (config["log"]) {
             ParseLog(config);
         }
+        if (config["security"]) {
+            ParseSecurity(config);
+        }
+        if (config["cors"]) {
+            ParseCors(config);
+        }
         
         spdlog::info("Config loaded successfully from {}", config_file);
         return true;
@@ -73,6 +79,50 @@ bool Config::ParseLog(const YAML::Node& config) {
     log_.file = log["file"].as<std::string>();
     log_.max_size = log["max_size"].as<uint32_t>();
     log_.max_files = log["max_files"].as<uint32_t>();
+    return true;
+}
+
+bool Config::ParseSecurity(const YAML::Node& config) {
+    auto sec = config["security"];
+    security_.enable_rate_limit = sec["enable_rate_limit"].as<bool>(true);
+    security_.rate_limit_requests = sec["rate_limit_requests"].as<uint32_t>(100);
+    security_.rate_limit_window = sec["rate_limit_window"].as<uint32_t>(60);
+    security_.enable_xss_protection = sec["enable_xss_protection"].as<bool>(true);
+    security_.enable_sql_protection = sec["enable_sql_protection"].as<bool>(true);
+    security_.jwt_expiry_hours = sec["jwt_expiry_hours"].as<uint32_t>(24);
+    return true;
+}
+
+bool Config::ParseCors(const YAML::Node& config) {
+    auto cors = config["cors"];
+    cors_.enabled = cors["enabled"].as<bool>(true);
+    
+    if (cors["allowed_origins"] && cors["allowed_origins"].IsSequence()) {
+        for (const auto& origin : cors["allowed_origins"]) {
+            cors_.allowed_origins.push_back(origin.as<std::string>());
+        }
+    }
+    
+    if (cors["allowed_methods"] && cors["allowed_methods"].IsSequence()) {
+        for (const auto& method : cors["allowed_methods"]) {
+            cors_.allowed_methods.push_back(method.as<std::string>());
+        }
+    }
+    
+    if (cors["allowed_headers"] && cors["allowed_headers"].IsSequence()) {
+        for (const auto& header : cors["allowed_headers"]) {
+            cors_.allowed_headers.push_back(header.as<std::string>());
+        }
+    }
+    
+    if (cors["expose_headers"] && cors["expose_headers"].IsSequence()) {
+        for (const auto& header : cors["expose_headers"]) {
+            cors_.expose_headers.push_back(header.as<std::string>());
+        }
+    }
+    
+    cors_.allow_credentials = cors["allow_credentials"].as<bool>(true);
+    cors_.max_age = cors["max_age"].as<uint32_t>(86400);
     return true;
 }
 

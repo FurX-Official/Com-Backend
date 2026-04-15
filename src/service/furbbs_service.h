@@ -101,6 +101,38 @@ public:
     ::trpc::Status GetMessages(::trpc::ServerContextPtr context,
                               const ::furbbs::GetMessagesRequest* request,
                               ::furbbs::GetMessagesResponse* response) override;
+
+    ::trpc::Status HealthCheck(::trpc::ServerContextPtr context,
+                              const ::furbbs::HealthCheckRequest* request,
+                              ::furbbs::HealthCheckResponse* response) override;
+
+    ::trpc::Status GetServerStats(::trpc::ServerContextPtr context,
+                                 const ::furbbs::GetServerStatsRequest* request,
+                                 ::furbbs::GetServerStatsResponse* response) override;
+
+    ::trpc::Status GrantPermission(::trpc::ServerContextPtr context,
+                                  const ::furbbs::GrantPermissionRequest* request,
+                                  ::furbbs::GrantPermissionResponse* response) override;
+
+    ::trpc::Status RevokePermission(::trpc::ServerContextPtr context,
+                                   const ::furbbs::RevokePermissionRequest* request,
+                                   ::furbbs::RevokePermissionResponse* response) override;
+
+    ::trpc::Status ListUserPermissions(::trpc::ServerContextPtr context,
+                                      const ::furbbs::ListUserPermissionsRequest* request,
+                                      ::furbbs::ListUserPermissionsResponse* response) override;
+
+    ::trpc::Status ModeratePost(::trpc::ServerContextPtr context,
+                               const ::furbbs::ModeratePostRequest* request,
+                               ::furbbs::ModeratePostResponse* response) override;
+
+    ::trpc::Status PinPost(::trpc::ServerContextPtr context,
+                          const ::furbbs::PinPostRequest* request,
+                          ::furbbs::PinPostResponse* response) override;
+
+    ::trpc::Status LockPost(::trpc::ServerContextPtr context,
+                           const ::furbbs::LockPostRequest* request,
+                           ::furbbs::LockPostResponse* response) override;
 };
 
 } // namespace furbbs::service

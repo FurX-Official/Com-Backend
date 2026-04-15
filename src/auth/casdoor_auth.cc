@@ -167,4 +167,8 @@ bool CasdoorAuth::SyncUserToDB(const CasdoorUser& user) {
     }
 }
 
+bool CasdoorAuth::IsHealthy() const {
+    return !certificate_.empty() && !client_id_.empty();
+}
+
 } // namespace furbbs::auth

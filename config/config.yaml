@@ -28,3 +28,29 @@ log:
   file: ./logs/furbbs.log
   max_size: 100
   max_files: 10
+
+security:
+  enable_rate_limit: true
+  rate_limit_requests: 100
+  rate_limit_window: 60
+  enable_xss_protection: true
+  enable_sql_protection: true
+  jwt_expiry_hours: 24
+
+cors:
+  enabled: true
+  allowed_origins:
+    - "*"
+  allowed_methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - OPTIONS
+  allowed_headers:
+    - "*"
+  expose_headers:
+    - Content-Length
+    - Content-Type
+  allow_credentials: true
+  max_age: 86400

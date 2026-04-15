@@ -40,6 +40,25 @@ struct LogConfig {
     uint32_t max_files;
 };
 
+struct SecurityConfig {
+    bool enable_rate_limit;
+    uint32_t rate_limit_requests;
+    uint32_t rate_limit_window;
+    bool enable_xss_protection;
+    bool enable_sql_protection;
+    uint32_t jwt_expiry_hours;
+};
+
+struct CorsConfig {
+    bool enabled;
+    std::vector<std::string> allowed_origins;
+    std::vector<std::string> allowed_methods;
+    std::vector<std::string> allowed_headers;
+    std::vector<std::string> expose_headers;
+    bool allow_credentials;
+    uint32_t max_age;
+};
+
 class Config {
 public:
     static Config& Instance();
@@ -50,6 +69,8 @@ public:
     const DatabaseConfig& GetDatabaseConfig() const { return database_; }
     const CasdoorConfig& GetCasdoorConfig() const { return casdoor_; }
     const LogConfig& GetLogConfig() const { return log_; }
+    const SecurityConfig& GetSecurityConfig() const { return security_; }
+    const CorsConfig& GetCorsConfig() const { return cors_; }
 
 private:
     Config() = default;
@@ -59,11 +80,15 @@ private:
     bool ParseDatabase(const YAML::Node& config);
     bool ParseCasdoor(const YAML::Node& config);
     bool ParseLog(const YAML::Node& config);
+    bool ParseSecurity(const YAML::Node& config);
+    bool ParseCors(const YAML::Node& config);
 
     ServerConfig server_;
     DatabaseConfig database_;
     CasdoorConfig casdoor_;
     LogConfig log_;
+    SecurityConfig security_;
+    CorsConfig cors_;
 };
 
 } // namespace furbbs::config

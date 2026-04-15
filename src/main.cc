@@ -8,6 +8,8 @@
 #include "db/database.h"
 #include "auth/casdoor_auth.h"
 #include "service/furbbs_service.h"
+#include "middleware/auth_interceptor.h"
+#include "common/security.h"
 
 int main(int argc, char* argv[]) {
     std::string config_file = "./config/config.yaml";
@@ -63,6 +65,13 @@ int main(int argc, char* argv[]) {
     if (!server.RegisterService(service)) {
         spdlog::error("Failed to register service");
         return 1;
+    }
+
+    auto auth_interceptor = std::make_shared<furbbs::middleware::AuthInterceptor>();
+    if (!server.RegisterInterceptor(auth_interceptor)) {
+        spdlog::warn("Failed to register auth interceptor");
+    } else {
+        spdlog::info("Auth interceptor registered successfully");
     }
 
     spdlog::info("FurBBS Server started on {}", server_config.listen);

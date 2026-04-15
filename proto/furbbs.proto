@@ -507,4 +507,124 @@ service FurBBSService {
     
     rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
     rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
+
+    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+    rpc GetServerStats(GetServerStatsRequest) returns (GetServerStatsResponse);
+    
+    rpc GrantPermission(GrantPermissionRequest) returns (GrantPermissionResponse);
+    rpc RevokePermission(RevokePermissionRequest) returns (RevokePermissionResponse);
+    rpc ListUserPermissions(ListUserPermissionsRequest) returns (ListUserPermissionsResponse);
+    
+    rpc ModeratePost(ModeratePostRequest) returns (ModeratePostResponse);
+    rpc PinPost(PinPostRequest) returns (PinPostResponse);
+    rpc LockPost(LockPostRequest) returns (LockPostResponse);
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+    int32 code = 1;
+    string message = 2;
+    bool database_healthy = 3;
+    bool casdoor_healthy = 4;
+    int64 server_time = 5;
+    string version = 6;
+}
+
+message GetServerStatsRequest {
+    string access_token = 1;
+}
+
+message GetServerStatsResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 total_users = 3;
+    int64 total_posts = 4;
+    int64 total_comments = 5;
+    int64 total_galleries = 6;
+    int64 total_fursonas = 7;
+    int64 total_commissions = 8;
+    int64 total_events = 9;
+    int64 active_connections = 10;
+    int64 uptime_seconds = 11;
+}
+
+enum PermissionType {
+    PERMISSION_CREATE_POST = 0;
+    PERMISSION_EDIT_ANY_POST = 1;
+    PERMISSION_DELETE_ANY_POST = 2;
+    PERMISSION_PIN_POST = 3;
+    PERMISSION_LOCK_POST = 4;
+    PERMISSION_MANAGE_USERS = 5;
+    PERMISSION_MODERATE_CONTENT = 6;
+    PERMISSION_CREATE_COMMISSION = 7;
+    PERMISSION_MANAGE_EVENTS = 8;
+    PERMISSION_ADMIN_ACCESS = 9;
+}
+
+message GrantPermissionRequest {
+    string access_token = 1;
+    string target_user_id = 2;
+    PermissionType permission = 3;
+}
+
+message GrantPermissionResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message RevokePermissionRequest {
+    string access_token = 1;
+    string target_user_id = 2;
+    PermissionType permission = 3;
+}
+
+message RevokePermissionResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message ListUserPermissionsRequest {
+    string access_token = 1;
+    string target_user_id = 2;
+}
+
+message ListUserPermissionsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated PermissionType permissions = 3;
+}
+
+message ModeratePostRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    bool remove = 3;
+    string reason = 4;
+}
+
+message ModeratePostResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message PinPostRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    bool is_pinned = 3;
+}
+
+message PinPostResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message LockPostRequest {
+    string access_token = 1;
+    int64 post_id = 2;
+    bool is_locked = 3;
+}
+
+message LockPostResponse {
+    int32 code = 1;
+    string message = 2;
 }

@@ -1,7 +1,9 @@
 #include "furbbs_service.h"
 #include <spdlog/spdlog.h>
+#include <atomic>
 #include "../db/database.h"
 #include "../auth/casdoor_auth.h"
+#include "../common/security.h"
 
 namespace furbbs::service {
 
@@ -1064,6 +1066,304 @@ namespace furbbs::service {
             response->set_code(200);
             response->set_message("Success");
         });
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+static const int64_t SERVER_START_TIME = std::chrono::duration_cast<std::chrono::seconds>(
+    std::chrono::system_clock::now().time_since_epoch()
+).count();
+
+::trpc::Status FurBBSServiceImpl::HealthCheck(::trpc::ServerContextPtr context,
+                                             const ::furbbs::HealthCheckRequest* request,
+                                             ::furbbs::HealthCheckResponse* response) {
+    try {
+        bool db_healthy = false;
+        bool casdoor_healthy = false;
+        
+        try {
+            db::Database::Instance().Execute([&](pqxx::work& txn) {
+                auto result = txn.exec("SELECT 1");
+                db_healthy = !result.empty();
+            });
+        } catch (...) {
+            db_healthy = false;
+        }
+
+        casdoor_healthy = auth::CasdoorAuth::Instance().IsHealthy();
+
+        auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count();
+
+        response->set_code(200);
+        response->set_message("OK");
+        response->set_database_healthy(db_healthy);
+        response->set_casdoor_healthy(casdoor_healthy);
+        response->set_server_time(now);
+        response->set_version("1.0.0");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetServerStats(::trpc::ServerContextPtr context,
+                                                const ::furbbs::GetServerStatsRequest* request,
+                                                ::furbbs::GetServerStatsResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        if (!common::PermissionManager::Instance().IsAdmin(user_opt->id)) {
+            response->set_code(403);
+            response->set_message("Admin access required");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto now = std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::system_clock::now().time_since_epoch()
+            ).count();
+
+            response->set_code(200);
+            response->set_message("Success");
+            response->set_uptime_seconds(now - SERVER_START_TIME);
+            
+            auto users_result = txn.exec("SELECT COUNT(*) FROM users");
+            response->set_total_users(users_result[0][0].as<int64_t>());
+            
+            auto posts_result = txn.exec("SELECT COUNT(*) FROM posts");
+            response->set_total_posts(posts_result[0][0].as<int64_t>());
+            
+            auto comments_result = txn.exec("SELECT COUNT(*) FROM comments");
+            response->set_total_comments(comments_result[0][0].as<int64_t>());
+            
+            auto galleries_result = txn.exec("SELECT COUNT(*) FROM gallery");
+            response->set_total_galleries(galleries_result[0][0].as<int64_t>());
+            
+            auto fursonas_result = txn.exec("SELECT COUNT(*) FROM fursonas");
+            response->set_total_fursonas(fursonas_result[0][0].as<int64_t>());
+            
+            auto commissions_result = txn.exec("SELECT COUNT(*) FROM commission_types");
+            response->set_total_commissions(commissions_result[0][0].as<int64_t>());
+            
+            auto events_result = txn.exec("SELECT COUNT(*) FROM events");
+            response->set_total_events(events_result[0][0].as<int64_t>());
+        });
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GrantPermission(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::GrantPermissionRequest* request,
+                                                 ::furbbs::GrantPermissionResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        if (!common::PermissionManager::Instance().IsAdmin(user_opt->id)) {
+            response->set_code(403);
+            response->set_message("Admin access required");
+            return ::trpc::kSuccStatus;
+        }
+
+        common::Permission perm = static_cast<common::Permission>(1 << request->permission());
+        common::PermissionManager::Instance().GrantPermission(request->target_user_id(), perm);
+
+        response->set_code(200);
+        response->set_message("Permission granted successfully");
+        spdlog::info("Admin {} granted permission {} to user {}", 
+                     user_opt->id, request->permission(), request->target_user_id());
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::RevokePermission(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::RevokePermissionRequest* request,
+                                                  ::furbbs::RevokePermissionResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        if (!common::PermissionManager::Instance().IsAdmin(user_opt->id)) {
+            response->set_code(403);
+            response->set_message("Admin access required");
+            return ::trpc::kSuccStatus;
+        }
+
+        common::Permission perm = static_cast<common::Permission>(1 << request->permission());
+        common::PermissionManager::Instance().RevokePermission(request->target_user_id(), perm);
+
+        response->set_code(200);
+        response->set_message("Permission revoked successfully");
+        spdlog::info("Admin {} revoked permission {} from user {}", 
+                     user_opt->id, request->permission(), request->target_user_id());
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::ListUserPermissions(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::ListUserPermissionsRequest* request,
+                                                     ::furbbs::ListUserPermissionsResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        if (!common::PermissionManager::Instance().IsAdmin(user_opt->id) && 
+            user_opt->id != request->target_user_id()) {
+            response->set_code(403);
+            response->set_message("Admin access required");
+            return ::trpc::kSuccStatus;
+        }
+
+        for (int i = 0; i <= 9; i++) {
+            common::Permission perm = static_cast<common::Permission>(1 << i);
+            if (common::PermissionManager::Instance().HasPermission(request->target_user_id(), perm)) {
+                response->add_permissions(static_cast<::furbbs::PermissionType>(i));
+            }
+        }
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::ModeratePost(::trpc::ServerContextPtr context,
+                                              const ::furbbs::ModeratePostRequest* request,
+                                              ::furbbs::ModeratePostResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        if (!common::PermissionManager::Instance().IsModerator(user_opt->id)) {
+            response->set_code(403);
+            response->set_message("Moderator access required");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            if (request->remove()) {
+                txn.exec_params(R"(
+                    UPDATE posts SET is_removed = TRUE, moderation_reason = $2, moderated_by = $3
+                    WHERE id = $1
+                )", request->post_id(), request->reason(), user_opt->id);
+                spdlog::warn("Moderator {} removed post {}, reason: {}", 
+                            user_opt->id, request->post_id(), request->reason());
+            } else {
+                txn.exec_params(R"(
+                    UPDATE posts SET is_removed = FALSE, moderation_reason = NULL, moderated_by = NULL
+                    WHERE id = $1
+                )", request->post_id());
+                spdlog::info("Moderator {} restored post {}", user_opt->id, request->post_id());
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Post moderated successfully");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::PinPost(::trpc::ServerContextPtr context,
+                                         const ::furbbs::PinPostRequest* request,
+                                         ::furbbs::PinPostResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        if (!common::PermissionManager::Instance().HasPermission(
+                user_opt->id, common::Permission::PIN_POST)) {
+            response->set_code(403);
+            response->set_message("Pin permission required");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            txn.exec_params(R"(
+                UPDATE posts SET is_pinned = $2 WHERE id = $1
+            )", request->post_id(), request->is_pinned());
+        });
+
+        response->set_code(200);
+        response->set_message(request->is_pinned() ? "Post pinned" : "Post unpinned");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::LockPost(::trpc::ServerContextPtr context,
+                                          const ::furbbs::LockPostRequest* request,
+                                          ::furbbs::LockPostResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        if (!common::PermissionManager::Instance().HasPermission(
+                user_opt->id, common::Permission::LOCK_POST)) {
+            response->set_code(403);
+            response->set_message("Lock permission required");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            txn.exec_params(R"(
+                UPDATE posts SET is_locked = $2 WHERE id = $1
+            )", request->post_id(), request->is_locked());
+        });
+
+        response->set_code(200);
+        response->set_message(request->is_locked() ? "Post locked" : "Post unlocked");
     } catch (const std::exception& e) {
         response->set_code(500);
         response->set_message(e.what());

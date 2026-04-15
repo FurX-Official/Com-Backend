@@ -29,6 +29,8 @@ public:
     std::optional<CasdoorUser> GetUserInfo(const std::string& user_id);
     
     bool SyncUserToDB(const CasdoorUser& user);
+    
+    bool IsHealthy() const;
 
 private:
     CasdoorAuth() = default;
