@@ -7,6 +7,31 @@
 
 namespace furbbs::service {
 
+namespace {
+
+void SendNotification(const std::string& user_id, 
+                      const std::string& type,
+                      const std::string& actor_id,
+                      int64_t related_id,
+                      const std::string& related_type,
+                      const std::string& title,
+                      const std::string& content = "") {
+    try {
+        if (user_id == actor_id) return;
+        
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            txn.exec_params(R"(
+                INSERT INTO notifications (user_id, type, actor_id, related_id, related_type, title, content)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+            )", user_id, type, actor_id, related_id, related_type, title, content);
+        });
+    } catch (const std::exception& e) {
+        spdlog::warn("Failed to send notification: {}", e.what());
+    }
+}
+
+} // anonymous namespace
+
 ::trpc::Status FurBBSServiceImpl::GetUser(::trpc::ServerContextPtr context,
                                          const ::furbbs::GetUserRequest* request,
                                          ::furbbs::GetUserResponse* response) {
@@ -512,6 +537,9 @@ namespace furbbs::service {
                     UPDATE users SET following_count = following_count + 1 WHERE id = $1;
                     UPDATE users SET follower_count = follower_count + 1 WHERE id = $2;
                 )", user_opt->id, request->target_user_id());
+
+                SendNotification(request->target_user_id(), "FOLLOW", user_opt->id, 0, "user",
+                                user_opt->display_name.empty() ? user_opt->name : user_opt->display_name + " 关注了你");
 
                 response->set_code(200);
                 response->set_message("Followed successfully");
@@ -1364,6 +1392,669 @@ static const int64_t SERVER_START_TIME = std::chrono::duration_cast<std::chrono:
 
         response->set_code(200);
         response->set_message(request->is_locked() ? "Post locked" : "Post unlocked");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetNotifications(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetNotificationsRequest* request,
+                                                   ::furbbs::GetNotificationsResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        int32_t page = request->page() > 0 ? request->page() : 1;
+        int32_t page_size = request->page_size() > 0 ? request->page_size() : 20;
+        int32_t offset = (page - 1) * page_size;
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            std::string sql = R"(
+                SELECT n.id, n.type, n.actor_id, n.related_id, n.related_type, n.title, n.content, n.is_read, n.created_at,
+                       u.name, u.display_name, u.avatar
+                FROM notifications n
+                LEFT JOIN users u ON n.actor_id = u.id
+                WHERE n.user_id = $1
+            )";
+            
+            if (request->unread_only()) {
+                sql += " AND n.is_read = FALSE ";
+            }
+            sql += " ORDER BY n.created_at DESC LIMIT $2 OFFSET $3";
+
+            auto result = txn.exec_params(sql, user_opt->id, page_size, offset);
+            
+            auto count_result = txn.exec_params("SELECT COUNT(*) FROM notifications WHERE user_id = $1", user_opt->id);
+            auto unread_result = txn.exec_params("SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = FALSE", user_opt->id);
+
+            for (const auto& row : result) {
+                auto* notif = response->add_notifications();
+                notif->set_id(row[0].as<int64_t>());
+                notif->set_user_id(user_opt->id);
+                notif->set_type(static_cast<::furbbs::NotificationType>(row[1].as<int32_t>()));
+                notif->set_actor_id(row[2].as<std::string>());
+                notif->set_related_id(row[3].as<int64_t>());
+                notif->set_related_type(row[4].as<std::string>());
+                notif->set_title(row[5].as<std::string>());
+                notif->set_content(row[6].as<std::string>());
+                notif->set_is_read(row[7].as<bool>());
+                notif->set_created_at(row[8].as<int64_t>());
+
+                if (!row[9].is_null()) {
+                    auto* actor = notif->mutable_actor();
+                    actor->set_id(row[2].as<std::string>());
+                    actor->set_name(row[9].as<std::string>());
+                    actor->set_display_name(row[10].as<std::string>());
+                    actor->set_avatar(row[11].as<std::string>());
+                }
+            }
+
+            response->set_total(count_result[0][0].as<int32_t>());
+            response->set_unread_count(unread_result[0][0].as<int32_t>());
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::MarkNotificationRead(::trpc::ServerContextPtr context,
+                                                       const ::furbbs::MarkNotificationReadRequest* request,
+                                                       ::furbbs::MarkNotificationReadResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            if (request->read_all()) {
+                txn.exec_params("UPDATE notifications SET is_read = TRUE WHERE user_id = $1", user_opt->id);
+            } else {
+                txn.exec_params("UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2",
+                                request->notification_id(), user_opt->id);
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Marked as read");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::AddFavorite(::trpc::ServerContextPtr context,
+                                            const ::furbbs::AddFavoriteRequest* request,
+                                            ::furbbs::AddFavoriteResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        int64_t favorite_id = db::Database::Instance().Execute([&](pqxx::work& txn) {
+            std::string title, thumbnail;
+            
+            if (request->target_type() == "post") {
+                auto result = txn.exec_params("SELECT title FROM posts WHERE id = $1", request->target_id());
+                if (!result.empty()) title = result[0][0].as<std::string>();
+            }
+            
+            auto result = txn.exec_params(R"(
+                INSERT INTO favorites (user_id, target_id, target_type, title, thumbnail)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING id
+            )", user_opt->id, request->target_id(), request->target_type(), title, thumbnail);
+            
+            return result[0][0].as<int64_t>();
+        });
+
+        response->set_code(200);
+        response->set_message("Added to favorites");
+        response->set_favorite_id(favorite_id);
+    } catch (const pqxx::unique_violation&) {
+        response->set_code(400);
+        response->set_message("Already in favorites");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::RemoveFavorite(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::RemoveFavoriteRequest* request,
+                                                 ::furbbs::RemoveFavoriteResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            txn.exec_params("DELETE FROM favorites WHERE id = $1 AND user_id = $2",
+                            request->favorite_id(), user_opt->id);
+        });
+
+        response->set_code(200);
+        response->set_message("Removed from favorites");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetFavorites(::trpc::ServerContextPtr context,
+                                              const ::furbbs::GetFavoritesRequest* request,
+                                              ::furbbs::GetFavoritesResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        int32_t page = request->page() > 0 ? request->page() : 1;
+        int32_t page_size = request->page_size() > 0 ? request->page_size() : 20;
+        int32_t offset = (page - 1) * page_size;
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            std::string sql = R"(
+                SELECT id, target_id, target_type, title, thumbnail, created_at
+                FROM favorites WHERE user_id = $1
+            )";
+            
+            if (!request->target_type().empty()) {
+                sql += " AND target_type = '" + txn.esc(request->target_type()) + "' ";
+            }
+            sql += " ORDER BY created_at DESC LIMIT $2 OFFSET $3";
+
+            auto result = txn.exec_params(sql, user_opt->id, page_size, offset);
+            auto count_result = txn.exec_params("SELECT COUNT(*) FROM favorites WHERE user_id = $1", user_opt->id);
+
+            for (const auto& row : result) {
+                auto* fav = response->add_favorites();
+                fav->set_id(row[0].as<int64_t>());
+                fav->set_user_id(user_opt->id);
+                fav->set_target_id(row[1].as<int64_t>());
+                fav->set_target_type(row[2].as<std::string>());
+                fav->set_title(row[3].as<std::string>());
+                fav->set_thumbnail(row[4].as<std::string>());
+                fav->set_created_at(row[5].as<int64_t>());
+            }
+
+            response->set_total(count_result[0][0].as<int32_t>());
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::CreateReport(::trpc::ServerContextPtr context,
+                                              const ::furbbs::CreateReportRequest* request,
+                                              ::furbbs::CreateReportResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        std::vector<std::string> report_types = {"SPAM", "HARASSMENT", "EXPLICIT", "VIOLENCE", "COPYRIGHT", "OTHER"};
+
+        int64_t report_id = db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec_params(R"(
+                INSERT INTO reports (reporter_id, target_type, target_id, type, description)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING id
+            )", user_opt->id, request->target_type(), request->target_id(),
+                report_types[request->type()], common::Security::SanitizeHtml(request->description()));
+            
+            return result[0][0].as<int64_t>();
+        });
+
+        response->set_code(200);
+        response->set_message("Report submitted");
+        response->set_report_id(report_id);
+        
+        spdlog::warn("User {} reported {} #{}: {}", user_opt->id, 
+                     request->target_type(), request->target_id(), report_types[request->type()]);
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetReports(::trpc::ServerContextPtr context,
+                                             const ::furbbs::GetReportsRequest* request,
+                                             ::furbbs::GetReportsResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        if (!common::PermissionManager::Instance().IsModerator(user_opt->id)) {
+            response->set_code(403);
+            response->set_message("Moderator access required");
+            return ::trpc::kSuccStatus;
+        }
+
+        int32_t page = request->page() > 0 ? request->page() : 1;
+        int32_t page_size = request->page_size() > 0 ? request->page_size() : 20;
+        int32_t offset = (page - 1) * page_size;
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            std::string sql = R"(
+                SELECT id, reporter_id, target_type, target_id, type, description, status, created_at
+                FROM reports WHERE 1=1
+            )";
+            
+            if (!request->status().empty()) {
+                sql += " AND status = '" + txn.esc(request->status()) + "' ";
+            }
+            sql += " ORDER BY created_at DESC LIMIT $1 OFFSET $2";
+
+            auto result = txn.exec_params(sql, page_size, offset);
+            auto count_result = txn.exec("SELECT COUNT(*) FROM reports");
+
+            for (const auto& row : result) {
+                auto* report = response->add_reports();
+                report->set_id(row[0].as<int64_t>());
+                report->set_reporter_id(row[1].as<std::string>());
+                report->set_target_type(row[2].as<std::string>());
+                report->set_target_id(row[3].as<int64_t>());
+            }
+
+            response->set_total(count_result[0][0].as<int32_t>());
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::HandleReport(::trpc::ServerContextPtr context,
+                                             const ::furbbs::HandleReportRequest* request,
+                                             ::furbbs::HandleReportResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        if (!common::PermissionManager::Instance().IsModerator(user_opt->id)) {
+            response->set_code(403);
+            response->set_message("Moderator access required");
+            return ::trpc::kSuccStatus;
+        }
+
+        auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count();
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            txn.exec_params(R"(
+                UPDATE reports SET status = $2, handled_by = $3, handle_note = $4, handled_at = $5
+                WHERE id = $1
+            )", request->report_id(), request->status(), user_opt->id, request->handle_note(), now);
+
+            if (request->remove_content()) {
+                txn.exec_params("UPDATE posts SET is_removed = TRUE WHERE id = $1", request->report_id());
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Report handled");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::Search(::trpc::ServerContextPtr context,
+                                        const ::furbbs::SearchRequest* request,
+                                        ::furbbs::SearchResponse* response) {
+    try {
+        int32_t page = request->page() > 0 ? request->page() : 1;
+        int32_t page_size = request->page_size() > 0 ? request->page_size() : 20;
+        int32_t offset = (page - 1) * page_size;
+        std::string search_term = "%" + request->query() + "%";
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            std::string sql;
+            std::string type = request->type();
+            
+            if (type.empty() || type == "post") {
+                sql += R"(
+                    SELECT id, 'post' as type, title, LEFT(content, 200), author_id, created_at
+                    FROM posts WHERE is_removed = FALSE AND (title ILIKE $1 OR content ILIKE $1)
+                )";
+            }
+            
+            sql += " ORDER BY created_at DESC LIMIT $2 OFFSET $3";
+
+            auto result = txn.exec_params(sql, search_term, page_size, offset);
+
+            for (const auto& row : result) {
+                auto* item = response->add_results();
+                item->set_id(row[0].as<int64_t>());
+                item->set_type(row[1].as<std::string>());
+                item->set_title(row[2].as<std::string>());
+                item->set_content(row[3].as<std::string>());
+                item->set_author_id(row[4].as<std::string>());
+                item->set_created_at(row[5].as<int64_t>());
+            }
+
+            response->set_total(result.size());
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::BlockUser(::trpc::ServerContextPtr context,
+                                         const ::furbbs::BlockUserRequest* request,
+                                         ::furbbs::BlockUserResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        if (user_opt->id == request->target_user_id()) {
+            response->set_code(400);
+            response->set_message("Cannot block yourself");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            txn.exec_params(R"(
+                INSERT INTO user_blocks (blocker_id, blocked_id) VALUES ($1, $2)
+                ON CONFLICT DO NOTHING
+            )", user_opt->id, request->target_user_id());
+        });
+
+        response->set_code(200);
+        response->set_message("User blocked");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::UnblockUser(::trpc::ServerContextPtr context,
+                                           const ::furbbs::UnblockUserRequest* request,
+                                           ::furbbs::UnblockUserResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            txn.exec_params(R"(
+                DELETE FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2
+            )", user_opt->id, request->target_user_id());
+        });
+
+        response->set_code(200);
+        response->set_message("User unblocked");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetBlockedUsers(::trpc::ServerContextPtr context,
+                                             const ::furbbs::GetBlockedUsersRequest* request,
+                                             ::furbbs::GetBlockedUsersResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec_params(R"(
+                SELECT u.id, u.name, u.display_name, u.avatar FROM user_blocks b
+                JOIN users u ON b.blocked_id = u.id
+                WHERE b.blocker_id = $1
+                ORDER BY b.created_at DESC
+            )", user_opt->id);
+
+            for (const auto& row : result) {
+                auto* user = response->add_users();
+                user->set_id(row[0].as<std::string>());
+                user->set_name(row[1].as<std::string>());
+                user->set_display_name(row[2].as<std::string>());
+                user->set_avatar(row[3].as<std::string>());
+            }
+
+            response->set_total(result.size());
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::SaveDraft(::trpc::ServerContextPtr context,
+                                          const ::furbbs::SaveDraftRequest* request,
+                                          ::furbbs::SaveDraftResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count();
+
+        int64_t draft_id = db::Database::Instance().Execute([&](pqxx::work& txn) {
+            pqxx::array<std::string> tags_array(request->tags().begin(), request->tags().end());
+            
+            if (request->draft_id() > 0) {
+                auto result = txn.exec_params(R"(
+                    UPDATE drafts SET type = $2, title = $3, content = $4, 
+                               category_id = $5, tags = $6, updated_at = $7
+                    WHERE id = $1 AND user_id = $8 RETURNING id
+                )", request->draft_id(), request->type(), 
+                    common::Security::SanitizeHtml(request->title()),
+                    common::Security::SanitizeXss(request->content()),
+                    request->category_id(), tags_array, now, user_opt->id);
+                return result[0][0].as<int64_t>();
+            } else {
+                auto result = txn.exec_params(R"(
+                    INSERT INTO drafts (user_id, type, title, content, category_id, tags, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    RETURNING id
+                )", user_opt->id, request->type(),
+                    common::Security::SanitizeHtml(request->title()),
+                    common::Security::SanitizeXss(request->content()),
+                    request->category_id(), tags_array, now);
+                return result[0][0].as<int64_t>();
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Draft saved");
+        response->set_draft_id(draft_id);
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetDrafts(::trpc::ServerContextPtr context,
+                                          const ::furbbs::GetDraftsRequest* request,
+                                          ::furbbs::GetDraftsResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        int32_t page = request->page() > 0 ? request->page() : 1;
+        int32_t page_size = request->page_size() > 0 ? request->page_size() : 20;
+        int32_t offset = (page - 1) * page_size;
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            std::string sql = R"(
+                SELECT id, type, title, content, category_id, created_at, updated_at
+                FROM drafts WHERE user_id = $1
+            )";
+            
+            if (!request->type().empty()) {
+                sql += " AND type = '" + txn.esc(request->type()) + "' ";
+            }
+            sql += " ORDER BY updated_at DESC LIMIT $2 OFFSET $3";
+
+            auto result = txn.exec_params(sql, user_opt->id, page_size, offset);
+            auto count_result = txn.exec_params("SELECT COUNT(*) FROM drafts WHERE user_id = $1", user_opt->id);
+
+            for (const auto& row : result) {
+                auto* draft = response->add_drafts();
+                draft->set_id(row[0].as<int64_t>());
+                draft->set_user_id(user_opt->id);
+                draft->set_type(row[1].as<std::string>());
+                draft->set_title(row[2].as<std::string>());
+                draft->set_content(row[3].as<std::string>());
+                draft->set_category_id(row[4].as<int64_t>());
+                draft->set_created_at(row[5].as<int64_t>());
+                draft->set_updated_at(row[6].as<int64_t>());
+            }
+
+            response->set_total(count_result[0][0].as<int32_t>());
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::DeleteDraft(::trpc::ServerContextPtr context,
+                                           const ::furbbs::DeleteDraftRequest* request,
+                                           ::furbbs::DeleteDraftResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            txn.exec_params("DELETE FROM drafts WHERE id = $1 AND user_id = $2",
+                            request->draft_id(), user_opt->id);
+        });
+
+        response->set_code(200);
+        response->set_message("Draft deleted");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::ExportUserData(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::ExportDataRequest* request,
+                                                   ::furbbs::ExportDataResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            std::map<std::string, int32_t> counts;
+            
+            auto posts_result = txn.exec_params("SELECT COUNT(*) FROM posts WHERE author_id = $1", user_opt->id);
+            counts["posts"] = posts_result[0][0].as<int32_t>();
+            
+            auto comments_result = txn.exec_params("SELECT COUNT(*) FROM comments WHERE author_id = $1", user_opt->id);
+            counts["comments"] = comments_result[0][0].as<int32_t>();
+            
+            auto gallery_result = txn.exec_params("SELECT COUNT(*) FROM gallery WHERE author_id = $1", user_opt->id);
+            counts["gallery_items"] = gallery_result[0][0].as<int32_t>();
+            
+            auto fursonas_result = txn.exec_params("SELECT COUNT(*) FROM fursonas WHERE user_id = $1", user_opt->id);
+            counts["fursonas"] = fursonas_result[0][0].as<int32_t>();
+
+            for (const auto& [key, value] : counts) {
+                (*response->mutable_item_counts())[key] = value;
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Data export prepared");
+        response->set_download_url("");
     } catch (const std::exception& e) {
         response->set_code(500);
         response->set_message(e.what());

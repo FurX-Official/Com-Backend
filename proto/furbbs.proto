@@ -518,6 +518,29 @@ service FurBBSService {
     rpc ModeratePost(ModeratePostRequest) returns (ModeratePostResponse);
     rpc PinPost(PinPostRequest) returns (PinPostResponse);
     rpc LockPost(LockPostRequest) returns (LockPostResponse);
+    
+    rpc GetNotifications(GetNotificationsRequest) returns (GetNotificationsResponse);
+    rpc MarkNotificationRead(MarkNotificationReadRequest) returns (MarkNotificationReadResponse);
+    
+    rpc AddFavorite(AddFavoriteRequest) returns (AddFavoriteResponse);
+    rpc RemoveFavorite(RemoveFavoriteRequest) returns (RemoveFavoriteResponse);
+    rpc GetFavorites(GetFavoritesRequest) returns (GetFavoritesResponse);
+    
+    rpc CreateReport(CreateReportRequest) returns (CreateReportResponse);
+    rpc GetReports(GetReportsRequest) returns (GetReportsResponse);
+    rpc HandleReport(HandleReportRequest) returns (HandleReportResponse);
+    
+    rpc Search(SearchRequest) returns (SearchResponse);
+    
+    rpc BlockUser(BlockUserRequest) returns (BlockUserResponse);
+    rpc UnblockUser(UnblockUserRequest) returns (UnblockUserResponse);
+    rpc GetBlockedUsers(GetBlockedUsersRequest) returns (GetBlockedUsersResponse);
+    
+    rpc SaveDraft(SaveDraftRequest) returns (SaveDraftResponse);
+    rpc GetDrafts(GetDraftsRequest) returns (GetDraftsResponse);
+    rpc DeleteDraft(DeleteDraftRequest) returns (DeleteDraftResponse);
+    
+    rpc ExportUserData(ExportDataRequest) returns (ExportDataResponse);
 }
 
 message HealthCheckRequest {}
@@ -627,4 +650,287 @@ message LockPostRequest {
 message LockPostResponse {
     int32 code = 1;
     string message = 2;
+}
+
+enum NotificationType {
+    NOTIFICATION_FOLLOW = 0;
+    NOTIFICATION_LIKE = 1;
+    NOTIFICATION_COMMENT = 2;
+    NOTIFICATION_MENTION = 3;
+    NOTIFICATION_COMMISSION = 4;
+    NOTIFICATION_EVENT = 5;
+    NOTIFICATION_SYSTEM = 6;
+}
+
+message Notification {
+    int64 id = 1;
+    string user_id = 2;
+    NotificationType type = 3;
+    string actor_id = 4;
+    UserInfo actor = 5;
+    int64 related_id = 6;
+    string related_type = 7;
+    string title = 8;
+    string content = 9;
+    bool is_read = 10;
+    int64 created_at = 11;
+}
+
+message GetNotificationsRequest {
+    string access_token = 1;
+    bool unread_only = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetNotificationsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Notification notifications = 3;
+    int32 total = 4;
+    int32 unread_count = 5;
+}
+
+message MarkNotificationReadRequest {
+    string access_token = 1;
+    int64 notification_id = 2;
+    bool read_all = 3;
+}
+
+message MarkNotificationReadResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message FavoriteItem {
+    int64 id = 1;
+    string user_id = 2;
+    int64 target_id = 3;
+    string target_type = 4;
+    string title = 5;
+    string thumbnail = 6;
+    int64 created_at = 7;
+}
+
+message AddFavoriteRequest {
+    string access_token = 1;
+    int64 target_id = 2;
+    string target_type = 3;
+}
+
+message AddFavoriteResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 favorite_id = 3;
+}
+
+message RemoveFavoriteRequest {
+    string access_token = 1;
+    int64 favorite_id = 2;
+}
+
+message RemoveFavoriteResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GetFavoritesRequest {
+    string access_token = 1;
+    string target_type = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetFavoritesResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated FavoriteItem favorites = 3;
+    int32 total = 4;
+}
+
+enum ReportType {
+    REPORT_SPAM = 0;
+    REPORT_HARASSMENT = 1;
+    REPORT_EXPLICIT = 2;
+    REPORT_VIOLENCE = 3;
+    REPORT_COPYRIGHT = 4;
+    REPORT_OTHER = 5;
+}
+
+message Report {
+    int64 id = 1;
+    string reporter_id = 2;
+    string target_type = 3;
+    int64 target_id = 4;
+    ReportType type = 5;
+    string description = 6;
+    string status = 7;
+    string handled_by = 8;
+    string handle_note = 9;
+    int64 created_at = 10;
+    int64 handled_at = 11;
+}
+
+message CreateReportRequest {
+    string access_token = 1;
+    string target_type = 2;
+    int64 target_id = 3;
+    ReportType type = 4;
+    string description = 5;
+}
+
+message CreateReportResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 report_id = 3;
+}
+
+message GetReportsRequest {
+    string access_token = 1;
+    string status = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetReportsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Report reports = 3;
+    int32 total = 4;
+}
+
+message HandleReportRequest {
+    string access_token = 1;
+    int64 report_id = 2;
+    string status = 3;
+    string handle_note = 4;
+    bool remove_content = 5;
+}
+
+message HandleReportResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message SearchRequest {
+    string access_token = 1;
+    string query = 2;
+    string type = 3;
+    int32 page = 4;
+    int32 page_size = 5;
+}
+
+message SearchResult {
+    int64 id = 1;
+    string type = 2;
+    string title = 3;
+    string content = 4;
+    string author_id = 5;
+    UserInfo author = 6;
+    int64 created_at = 7;
+}
+
+message SearchResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated SearchResult results = 3;
+    int32 total = 4;
+}
+
+message BlockUserRequest {
+    string access_token = 1;
+    string target_user_id = 2;
+}
+
+message BlockUserResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message UnblockUserRequest {
+    string access_token = 1;
+    string target_user_id = 2;
+}
+
+message UnblockUserResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message GetBlockedUsersRequest {
+    string access_token = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message GetBlockedUsersResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated UserInfo users = 3;
+    int32 total = 4;
+}
+
+message Draft {
+    int64 id = 1;
+    string user_id = 2;
+    string type = 3;
+    string title = 4;
+    string content = 5;
+    int64 category_id = 6;
+    repeated string tags = 7;
+    map<string, string> metadata = 8;
+    int64 created_at = 9;
+    int64 updated_at = 10;
+}
+
+message SaveDraftRequest {
+    string access_token = 1;
+    int64 draft_id = 2;
+    string type = 3;
+    string title = 4;
+    string content = 5;
+    int64 category_id = 6;
+    repeated string tags = 7;
+}
+
+message SaveDraftResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 draft_id = 3;
+}
+
+message GetDraftsRequest {
+    string access_token = 1;
+    string type = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetDraftsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Draft drafts = 3;
+    int32 total = 4;
+}
+
+message DeleteDraftRequest {
+    string access_token = 1;
+    int64 draft_id = 2;
+}
+
+message DeleteDraftResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message ExportDataRequest {
+    string access_token = 1;
+    repeated string data_types = 2;
+}
+
+message ExportDataResponse {
+    int32 code = 1;
+    string message = 2;
+    string download_url = 3;
+    map<string, int32> item_counts = 4;
 }

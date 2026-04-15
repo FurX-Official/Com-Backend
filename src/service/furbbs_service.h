@@ -133,6 +133,70 @@ public:
     ::trpc::Status LockPost(::trpc::ServerContextPtr context,
                            const ::furbbs::LockPostRequest* request,
                            ::furbbs::LockPostResponse* response) override;
+
+    ::trpc::Status GetNotifications(::trpc::ServerContextPtr context,
+                                   const ::furbbs::GetNotificationsRequest* request,
+                                   ::furbbs::GetNotificationsResponse* response) override;
+
+    ::trpc::Status MarkNotificationRead(::trpc::ServerContextPtr context,
+                                       const ::furbbs::MarkNotificationReadRequest* request,
+                                       ::furbbs::MarkNotificationReadResponse* response) override;
+
+    ::trpc::Status AddFavorite(::trpc::ServerContextPtr context,
+                              const ::furbbs::AddFavoriteRequest* request,
+                              ::furbbs::AddFavoriteResponse* response) override;
+
+    ::trpc::Status RemoveFavorite(::trpc::ServerContextPtr context,
+                                 const ::furbbs::RemoveFavoriteRequest* request,
+                                 ::furbbs::RemoveFavoriteResponse* response) override;
+
+    ::trpc::Status GetFavorites(::trpc::ServerContextPtr context,
+                               const ::furbbs::GetFavoritesRequest* request,
+                               ::furbbs::GetFavoritesResponse* response) override;
+
+    ::trpc::Status CreateReport(::trpc::ServerContextPtr context,
+                               const ::furbbs::CreateReportRequest* request,
+                               ::furbbs::CreateReportResponse* response) override;
+
+    ::trpc::Status GetReports(::trpc::ServerContextPtr context,
+                             const ::furbbs::GetReportsRequest* request,
+                             ::furbbs::GetReportsResponse* response) override;
+
+    ::trpc::Status HandleReport(::trpc::ServerContextPtr context,
+                               const ::furbbs::HandleReportRequest* request,
+                               ::furbbs::HandleReportResponse* response) override;
+
+    ::trpc::Status Search(::trpc::ServerContextPtr context,
+                         const ::furbbs::SearchRequest* request,
+                         ::furbbs::SearchResponse* response) override;
+
+    ::trpc::Status BlockUser(::trpc::ServerContextPtr context,
+                            const ::furbbs::BlockUserRequest* request,
+                            ::furbbs::BlockUserResponse* response) override;
+
+    ::trpc::Status UnblockUser(::trpc::ServerContextPtr context,
+                              const ::furbbs::UnblockUserRequest* request,
+                              ::furbbs::UnblockUserResponse* response) override;
+
+    ::trpc::Status GetBlockedUsers(::trpc::ServerContextPtr context,
+                                  const ::furbbs::GetBlockedUsersRequest* request,
+                                  ::furbbs::GetBlockedUsersResponse* response) override;
+
+    ::trpc::Status SaveDraft(::trpc::ServerContextPtr context,
+                            const ::furbbs::SaveDraftRequest* request,
+                            ::furbbs::SaveDraftResponse* response) override;
+
+    ::trpc::Status GetDrafts(::trpc::ServerContextPtr context,
+                            const ::furbbs::GetDraftsRequest* request,
+                            ::furbbs::GetDraftsResponse* response) override;
+
+    ::trpc::Status DeleteDraft(::trpc::ServerContextPtr context,
+                              const ::furbbs::DeleteDraftRequest* request,
+                              ::furbbs::DeleteDraftResponse* response) override;
+
+    ::trpc::Status ExportUserData(::trpc::ServerContextPtr context,
+                                  const ::furbbs::ExportDataRequest* request,
+                                  ::furbbs::ExportDataResponse* response) override;
 };
 
 } // namespace furbbs::service

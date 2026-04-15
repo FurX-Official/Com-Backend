@@ -232,3 +232,73 @@ INSERT INTO tags (name, color) VALUES
 ('免费', '#14B8A6'),
 ('兽装', '#F97316'),
 ('NSFW', '#EF4444');
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(32) NOT NULL,
+    actor_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    related_id BIGINT,
+    related_type VARCHAR(32),
+    title VARCHAR(256),
+    content TEXT,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX idx_notifications_unread ON notifications(user_id, is_read);
+
+CREATE TABLE IF NOT EXISTS favorites (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    target_id BIGINT NOT NULL,
+    target_type VARCHAR(32) NOT NULL,
+    title VARCHAR(256),
+    thumbnail VARCHAR(512),
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(user_id, target_id, target_type)
+);
+
+CREATE INDEX idx_favorites_user_id ON favorites(user_id);
+
+CREATE TABLE IF NOT EXISTS reports (
+    id SERIAL PRIMARY KEY,
+    reporter_id VARCHAR(128) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    target_type VARCHAR(32) NOT NULL,
+    target_id BIGINT NOT NULL,
+    type VARCHAR(32) NOT NULL,
+    description TEXT,
+    status VARCHAR(32) DEFAULT 'PENDING',
+    handled_by VARCHAR(128) REFERENCES users(id),
+    handle_note TEXT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    handled_at BIGINT
+);
+
+CREATE INDEX idx_reports_status ON reports(status);
+
+CREATE TABLE IF NOT EXISTS user_blocks (
+    id SERIAL PRIMARY KEY,
+    blocker_id VARCHAR(128) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    blocked_id VARCHAR(128) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(blocker_id, blocked_id)
+);
+
+CREATE INDEX idx_user_blocks_blocker ON user_blocks(blocker_id);
+
+CREATE TABLE IF NOT EXISTS drafts (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(32) NOT NULL DEFAULT 'post',
+    title VARCHAR(256),
+    content TEXT,
+    category_id INTEGER REFERENCES categories(id),
+    tags VARCHAR(128)[],
+    metadata JSONB DEFAULT '{}'::JSONB,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE INDEX idx_drafts_user_id ON drafts(user_id);
