@@ -1779,3 +1779,112 @@ CREATE INDEX idx_gallery_items ON gallery_items(gallery_id, created_at DESC);
 CREATE INDEX idx_transfers ON point_transfers(from_user_id, created_at DESC);
 CREATE INDEX idx_rewards ON post_rewards(post_id, created_at DESC);
 CREATE INDEX idx_collections ON collections(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS ai_prompts (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    fursona_id BIGINT REFERENCES fursonas(id) ON DELETE SET NULL,
+    prompt_type VARCHAR(32) NOT NULL,
+    title VARCHAR(128),
+    prompt TEXT NOT NULL,
+    model VARCHAR(64),
+    style_tags VARCHAR(64)[],
+    use_count INT DEFAULT 0,
+    is_public BOOLEAN DEFAULT FALSE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS fursona_relations (
+    id SERIAL PRIMARY KEY,
+    fursona_a_id BIGINT REFERENCES fursonas(id) ON DELETE CASCADE,
+    fursona_b_id BIGINT REFERENCES fursonas(id) ON DELETE CASCADE,
+    relation_type VARCHAR(32) NOT NULL,
+    user_a_confirmed BOOLEAN DEFAULT FALSE,
+    user_b_confirmed BOOLEAN DEFAULT FALSE,
+    anniversary BIGINT,
+    relation_data JSONB,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(fursona_a_id, fursona_b_id)
+);
+
+CREATE TABLE IF NOT EXISTS world_settings (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(128) NOT NULL,
+    description TEXT,
+    cover_image VARCHAR(256),
+    setting_type VARCHAR(32),
+    tags VARCHAR(64)[],
+    is_public BOOLEAN DEFAULT FALSE,
+    view_count INT DEFAULT 0,
+    like_count INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS world_pages (
+    id SERIAL PRIMARY KEY,
+    world_id INT REFERENCES world_settings(id) ON DELETE CASCADE,
+    title VARCHAR(128) NOT NULL,
+    content TEXT,
+    page_type VARCHAR(32),
+    parent_id INT,
+    sort_order INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS event_tickets (
+    id SERIAL PRIMARY KEY,
+    event_id INT REFERENCES events(id) ON DELETE CASCADE,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    ticket_type VARCHAR(32) NOT NULL,
+    price_paid INT DEFAULT 0,
+    checked_in BOOLEAN DEFAULT FALSE,
+    checked_in_at BIGINT,
+    qr_code VARCHAR(64),
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(event_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS market_items (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(128) NOT NULL,
+    description TEXT,
+    category VARCHAR(32) NOT NULL,
+    price INT NOT NULL,
+    price_type VARCHAR(16) DEFAULT 'points',
+    images VARCHAR(256)[],
+    tags VARCHAR(64)[],
+    status VARCHAR(16) DEFAULT 'available',
+    view_count INT DEFAULT 0,
+    favorite_count INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS market_transactions (
+    id SERIAL PRIMARY KEY,
+    item_id INT REFERENCES market_items(id) ON DELETE CASCADE,
+    seller_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    buyer_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    price INT NOT NULL,
+    price_type VARCHAR(16) DEFAULT 'points',
+    status VARCHAR(16) DEFAULT 'pending',
+    buyer_contact VARCHAR(128),
+    seller_contact VARCHAR(128),
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS market_favorites (
+    item_id INT REFERENCES market_items(id) ON DELETE CASCADE,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (item_id, user_id)
+);
+
+CREATE INDEX idx_ai_prompts ON ai_prompts(user_id, is_public, created_at DESC);
+CREATE INDEX idx_fursona_relations ON fursona_relations(fursona_a_id, fursona_b_id);
+CREATE INDEX idx_world_settings ON world_settings(user_id, is_public, created_at DESC);
+CREATE INDEX idx_world_pages ON world_pages(world_id, sort_order);
+CREATE INDEX idx_event_tickets ON event_tickets(event_id, user_id);
+CREATE INDEX idx_market_items ON market_items(category, status, created_at DESC);
+CREATE INDEX idx_market_transactions ON market_transactions(buyer_id, seller_id);

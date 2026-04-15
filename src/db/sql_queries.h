@@ -721,6 +721,206 @@ const std::string QUESTION_ANSWER = R"(
     WHERE id = $4
 )";
 
+const std::string COLLECTION_ADD_ITEM = R"(
+    INSERT INTO collection_items (collection_id, gallery_item_id, created_at)
+    VALUES ($1, $2, EXTRACT(EPOCH FROM NOW()) * 1000)
+)";
+
+const std::string AI_CREATE_PROMPT = R"(
+    INSERT INTO ai_prompts (user_id, fursona_id, prompt_type, title, prompt, model, style_tags, is_public, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, EXTRACT(EPOCH FROM NOW()) * 1000)
+    RETURNING id
+)";
+const std::string AI_GET_PROMPTS_USER = R"(
+    SELECT p.* FROM ai_prompts p
+    WHERE p.user_id = $1 AND ($2 OR p.is_public)
+    ORDER BY created_at DESC LIMIT $3 OFFSET $4
+)";
+const std::string AI_GET_PROMPTS_PUBLIC = R"(
+    SELECT p.* FROM ai_prompts p WHERE p.is_public = true
+    ORDER BY created_at DESC LIMIT $1 OFFSET $2
+)";
+const std::string AI_COUNT_PROMPTS = R"(
+    SELECT COUNT(*) FROM ai_prompts WHERE user_id = $1 AND ($2 OR is_public)
+)";
+const std::string AI_DELETE_PROMPT = R"(
+    DELETE FROM ai_prompts WHERE id = $1 AND user_id = $2
+)";
+
+const std::string CP_CREATE_RELATION = R"(
+    INSERT INTO fursona_relations (fursona_a_id, fursona_b_id, relation_type, anniversary, created_at)
+    VALUES ($1, $2, $3, $4, EXTRACT(EPOCH FROM NOW()) * 1000)
+    RETURNING id
+)";
+const std::string CP_CONFIRM_RELATION = R"(
+    UPDATE fursona_relations SET
+    user_a_confirmed = CASE WHEN (SELECT user_id FROM fursonas WHERE id = fursona_a_id) = $2 THEN true ELSE user_a_confirmed END,
+    user_b_confirmed = CASE WHEN (SELECT user_id FROM fursonas WHERE id = fursona_b_id) = $2 THEN true ELSE user_b_confirmed END
+    WHERE id = $1
+)";
+const std::string CP_GET_RELATIONS = R"(
+    SELECT r.*,
+    a.name as fursona_a_name, a.user_id as owner_a,
+    b.name as fursona_b_name, b.user_id as owner_b
+    FROM fursona_relations r
+    JOIN fursonas a ON r.fursona_a_id = a.id
+    JOIN fursonas b ON r.fursona_b_id = b.id
+    WHERE r.fursona_a_id = $1 OR r.fursona_b_id = $1
+)";
+const std::string CP_DELETE_RELATION = R"(
+    DELETE FROM fursona_relations r WHERE id = $1
+    AND (
+        (SELECT user_id FROM fursonas WHERE id = r.fursona_a_id) = $2 OR
+        (SELECT user_id FROM fursonas WHERE id = r.fursona_b_id) = $2
+    )
+)";
+
+const std::string WORLD_CREATE = R"(
+    INSERT INTO world_settings (user_id, name, description, cover_image, setting_type, tags, is_public, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, EXTRACT(EPOCH FROM NOW()) * 1000)
+    RETURNING id
+)";
+const std::string WORLD_UPDATE = R"(
+    UPDATE world_settings SET
+    name = $3, description = $4, cover_image = $5, setting_type = $6, tags = $7, is_public = $8
+    WHERE id = $1 AND user_id = $2
+)";
+const std::string WORLD_GET_BY_USER = R"(
+    SELECT w.*, u.username FROM world_settings w
+    JOIN users u ON w.user_id = u.id
+    WHERE w.user_id = $1 AND ($2 OR w.is_public)
+    ORDER BY created_at DESC LIMIT $3 OFFSET $4
+)";
+const std::string WORLD_GET_PUBLIC = R"(
+    SELECT w.*, u.username FROM world_settings w
+    JOIN users u ON w.user_id = u.id
+    WHERE w.is_public = true
+    ORDER BY created_at DESC LIMIT $1 OFFSET $2
+)";
+const std::string WORLD_GET_BY_ID = R"(
+    SELECT w.*, u.username, u.avatar FROM world_settings w
+    JOIN users u ON w.user_id = u.id WHERE w.id = $1
+)";
+const std::string WORLD_COUNT = R"(
+    SELECT COUNT(*) FROM world_settings WHERE user_id = $1 AND ($2 OR is_public)
+)";
+const std::string WORLD_CHECK_LIKE = R"(
+    SELECT 1 FROM world_likes WHERE world_id = $1 AND user_id = $2
+)";
+const std::string WORLD_LIKE = R"(
+    INSERT INTO world_likes (world_id, user_id) VALUES ($1, $2)
+    ON CONFLICT DO NOTHING
+)";
+const std::string WORLD_UNLIKE = R"(
+    DELETE FROM world_likes WHERE world_id = $1 AND user_id = $2
+)";
+const std::string WORLD_DELETE = R"(
+    DELETE FROM world_settings WHERE id = $1 AND user_id = $2
+)";
+const std::string WORLD_ADD_PAGE = R"(
+    INSERT INTO world_pages (world_id, title, content, page_type, parent_id, sort_order, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, EXTRACT(EPOCH FROM NOW()) * 1000)
+    RETURNING id
+)";
+const std::string WORLD_GET_PAGES = R"(
+    SELECT * FROM world_pages WHERE world_id = $1 ORDER BY sort_order
+)";
+const std::string WORLD_DELETE_PAGE = R"(
+    DELETE FROM world_pages p WHERE p.id = $1 AND p.world_id = $2
+    AND EXISTS (SELECT 1 FROM world_settings w WHERE w.id = p.world_id AND w.user_id = $3)
+)";
+
+const std::string EVENT_BUY_TICKET = R"(
+    INSERT INTO event_tickets (event_id, user_id, ticket_type, price_paid, qr_code, created_at)
+    VALUES ($1, $2, $3, $4, $5, EXTRACT(EPOCH FROM NOW()) * 1000)
+    RETURNING id
+)";
+const std::string EVENT_GET_USER_TICKETS = R"(
+    SELECT t.*, e.title as event_name FROM event_tickets t
+    JOIN events e ON t.event_id = e.id WHERE t.user_id = $1
+    ORDER BY created_at DESC
+)";
+const std::string EVENT_CHECKIN = R"(
+    UPDATE event_tickets SET checked_in = true, checked_in_at = $2 WHERE id = $1
+)";
+const std::string EVENT_GET_ATTENDEES = R"(
+    SELECT t.*, u.username, u.avatar FROM event_tickets t
+    JOIN users u ON t.user_id = u.id
+    WHERE t.event_id = $1 AND ($2 OR t.checked_in)
+    ORDER BY t.created_at
+)";
+
+const std::string MARKET_CREATE_ITEM = R"(
+    INSERT INTO market_items (user_id, title, description, category, price, price_type, images, tags, status, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'available', EXTRACT(EPOCH FROM NOW()) * 1000)
+    RETURNING id
+)";
+const std::string MARKET_UPDATE_ITEM = R"(
+    UPDATE market_items SET
+    title = $3, description = $4, category = $5, price = $6, price_type = $7,
+    images = $8, tags = $9, status = $10
+    WHERE id = $1 AND user_id = $2
+)";
+const std::string MARKET_GET_ITEMS = R"(
+    SELECT m.*, u.username, u.avatar FROM market_items m
+    JOIN users u ON m.user_id = u.id
+    WHERE m.status = 'available'
+    AND ($1 = '' OR m.category = $1)
+    AND ($2 = '' OR m.title ILIKE $2)
+    AND ($3 = '' OR m.user_id = $3)
+    ORDER BY created_at DESC LIMIT $4 OFFSET $5
+)";
+const std::string MARKET_COUNT_ITEMS = R"(
+    SELECT COUNT(*) FROM market_items m
+    WHERE m.status = 'available'
+    AND ($1 = '' OR m.category = $1)
+    AND ($2 = '' OR m.title ILIKE $2)
+)";
+const std::string MARKET_GET_ITEM = R"(
+    SELECT m.*, u.username, u.avatar FROM market_items m
+    JOIN users u ON m.user_id = u.id WHERE m.id = $1
+)";
+const std::string MARKET_INC_VIEW = R"(
+    UPDATE market_items SET view_count = view_count + 1 WHERE id = $1
+)";
+const std::string MARKET_CHECK_FAVORITE = R"(
+    SELECT 1 FROM market_favorites WHERE item_id = $1 AND user_id = $2
+)";
+const std::string MARKET_ADD_FAVORITE = R"(
+    INSERT INTO market_favorites (item_id, user_id) VALUES ($1, $2)
+    ON CONFLICT DO NOTHING;
+    UPDATE market_items SET favorite_count = favorite_count + 1 WHERE id = $1
+)";
+const std::string MARKET_DEL_FAVORITE = R"(
+    DELETE FROM market_favorites WHERE item_id = $1 AND user_id = $2;
+    UPDATE market_items SET favorite_count = favorite_count - 1 WHERE id = $1
+)";
+const std::string MARKET_DELETE_ITEM = R"(
+    DELETE FROM market_items WHERE id = $1 AND user_id = $2
+)";
+const std::string MARKET_GET_SELLER = R"(
+    SELECT user_id, price, price_type FROM market_items WHERE id = $1 AND status = 'available'
+)";
+const std::string MARKET_SET_SOLD = R"(
+    UPDATE market_items SET status = 'sold' WHERE id = $1
+)";
+const std::string MARKET_CREATE_TRANSACTION = R"(
+    INSERT INTO market_transactions (item_id, seller_id, buyer_id, price, price_type, buyer_contact, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, EXTRACT(EPOCH FROM NOW()) * 1000)
+    RETURNING id
+)";
+const std::string MARKET_CONFIRM_TRANS = R"(
+    UPDATE market_transactions SET status = $3,
+    seller_contact = CASE WHEN seller_id = $2 THEN $3 ELSE seller_contact END
+    WHERE id = $1 AND (seller_id = $2 OR buyer_id = $2)
+)";
+const std::string MARKET_GET_TRANSACTIONS = R"(
+    SELECT t.*, i.title FROM market_transactions t
+    JOIN market_items i ON t.item_id = i.id
+    WHERE buyer_id = $1 OR seller_id = $1
+    ORDER BY created_at DESC
+)";
+
 } // namespace furbbs::db::sql
 
 #endif // FURBBS_DB_SQL_QUERIES_H

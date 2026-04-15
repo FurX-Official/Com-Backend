@@ -13,6 +13,7 @@
 #include "../controller/post_controller.cc"
 #include "../controller/social_controller.cc"
 #include "../controller/economy_controller.cc"
+#include "../controller/furry_core_controller.cc"
 
 namespace furbbs::service {
 
@@ -310,6 +311,116 @@ namespace furbbs::service {
                                                   const ::furbbs::GetCollectionsRequest* request,
                                                   ::furbbs::GetCollectionsResponse* response) {
     return ::furbbs::controller::GetCollections(context, request, response);
+}
+
+// ==================== Furry核心功能接口 ====================
+
+::trpc::Status FurBBSServiceImpl::GenerateFursonaPrompt(::trpc::ServerContextPtr context,
+                                                          const ::furbbs::GenerateFursonaPromptRequest* request,
+                                                          ::furbbs::GenerateFursonaPromptResponse* response) {
+    return ::furbbs::controller::GenerateFursonaPrompt(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::SavePrompt(::trpc::ServerContextPtr context,
+                                               const ::furbbs::SavePromptRequest* request,
+                                               ::furbbs::SavePromptResponse* response) {
+    return ::furbbs::controller::SavePrompt(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetPrompts(::trpc::ServerContextPtr context,
+                                              const ::furbbs::GetPromptsRequest* request,
+                                              ::furbbs::GetPromptsResponse* response) {
+    return ::furbbs::controller::GetPrompts(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::CreateFursonaRelation(::trpc::ServerContextPtr context,
+                                                         const ::furbbs::CreateFursonaRelationRequest* request,
+                                                         ::furbbs::CreateFursonaRelationResponse* response) {
+    return ::furbbs::controller::CreateFursonaRelation(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::ConfirmRelation(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::ConfirmRelationRequest* request,
+                                                    ::furbbs::ConfirmRelationResponse* response) {
+    return ::furbbs::controller::ConfirmRelation(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetFursonaRelations(::trpc::ServerContextPtr context,
+                                                       const ::furbbs::GetFursonaRelationsRequest* request,
+                                                       ::furbbs::GetFursonaRelationsResponse* response) {
+    return ::furbbs::controller::GetFursonaRelations(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::CreateWorldSetting(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::CreateWorldSettingRequest* request,
+                                                      ::furbbs::CreateWorldSettingResponse* response) {
+    return ::furbbs::controller::CreateWorldSetting(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetWorlds(::trpc::ServerContextPtr context,
+                                             const ::furbbs::GetWorldsRequest* request,
+                                             ::furbbs::GetWorldsResponse* response) {
+    return ::furbbs::controller::GetWorlds(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::LikeWorld(::trpc::ServerContextPtr context,
+                                             const ::furbbs::LikeWorldRequest* request,
+                                             ::furbbs::LikeWorldResponse* response) {
+    return ::furbbs::controller::LikeWorld(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::PurchaseEventTicket(::trpc::ServerContextPtr context,
+                                                        const ::furbbs::PurchaseEventTicketRequest* request,
+                                                        ::furbbs::PurchaseEventTicketResponse* response) {
+    return ::furbbs::controller::PurchaseEventTicket(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserTickets(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetUserTicketsRequest* request,
+                                                   ::furbbs::GetUserTicketsResponse* response) {
+    return ::furbbs::controller::GetUserTickets(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::CheckInTicket(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::CheckInTicketRequest* request,
+                                                  ::furbbs::CheckInTicketResponse* response) {
+    return ::furbbs::controller::CheckInTicket(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::CreateMarketItem(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::CreateMarketItemRequest* request,
+                                                     ::furbbs::CreateMarketItemResponse* response) {
+    return ::furbbs::controller::CreateMarketItem(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetMarketItems(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::GetMarketItemsRequest* request,
+                                                  ::furbbs::GetMarketItemsResponse* response) {
+    return ::furbbs::controller::GetMarketItems(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetMarketItem(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::GetMarketItemRequest* request,
+                                                 ::furbbs::GetMarketItemResponse* response) {
+    return ::furbbs::controller::GetMarketItem(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::FavoriteMarketItem(::trpc::ServerContextPtr context,
+                                                       const ::furbbs::FavoriteMarketItemRequest* request,
+                                                       ::furbbs::FavoriteMarketItemResponse* response) {
+    return ::furbbs::controller::FavoriteMarketItem(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::PurchaseMarketItem(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::PurchaseMarketItemRequest* request,
+                                                      ::furbbs::PurchaseMarketItemResponse* response) {
+    return ::furbbs::controller::PurchaseMarketItem(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetMarketTransactions(::trpc::ServerContextPtr context,
+                                                          const ::furbbs::GetMarketTransactionsRequest* request,
+                                                          ::furbbs::GetMarketTransactionsResponse* response) {
+    return ::furbbs::controller::GetMarketTransactions(context, request, response);
 }
 
 } // namespace furbbs::service
