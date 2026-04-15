@@ -306,41 +306,18 @@ int64_t CustomizationRepository::CreateTheme(const std::string& creator_id,
 std::vector<UserThemeEntity> CustomizationRepository::GetThemes(
     bool only_public, const std::string& user_id, int limit, int offset) {
     return Execute<std::vector<UserThemeEntity>>([&](pqxx::work& txn) {
-        std::string sql = R"(
-            SELECT t.id, t.name, t.creator_id, u.username,
-                   t.primary_color, t.secondary_color,
-                   t.accent_color, t.bg_color, t.card_bg_color,
-                   t.text_color, t.is_public, t.use_count, t.created_at
-            FROM user_themes t
-            LEFT JOIN users u ON t.creator_id = u.id
-            WHERE 1=1
-        )";
-        std::vector<std::string> params;
-        int p = 1;
-
-        if (only_public) {
-            sql += " AND t.is_public = TRUE";
-        }
+        pqxx::result result;
         if (!user_id.empty()) {
-            sql += " AND t.creator_id = $" + std::to_string(p++);
-            params.push_back(user_id);
+            const std::string& query = only_public
+                ? sql::THEMES_LIST_PUBLIC_BY_USER
+                : sql::THEMES_LIST_BY_USER;
+            result = txn.exec_params(query, user_id, limit, offset);
+        } else {
+            const std::string& query = only_public
+                ? sql::THEMES_LIST_PUBLIC
+                : sql::THEMES_LIST_ALL;
+            result = txn.exec_params(query, limit, offset);
         }
-        sql += " ORDER BY t.use_count DESC, t.created_at DESC LIMIT $" +
-               std::to_string(p++) + " OFFSET $" + std::to_string(p++);
-        params.push_back(std::to_string(limit));
-        params.push_back(std::to_string(offset));
-
-        std::string final_sql = sql;
-        for (size_t i = 0; i < params.size(); i++) {
-            size_t pos = sql.find("$" + std::to_string(i + 1));
-            while (pos != std::string::npos) {
-                sql.replace(pos, 2 + std::to_string(i + 1).length(),
-                           "'" + txn.esc(params[i]) + "'");
-                pos = sql.find("$" + std::to_string(i + 1));
-            }
-        }
-
-        auto result = txn.exec(sql);
 
         std::vector<UserThemeEntity> themes;
         for (const auto& row : result) {
@@ -362,12 +339,14 @@ std::vector<UserThemeEntity> CustomizationRepository::GetThemes(
 
 int CustomizationRepository::GetThemeCount(bool only_public, const std::string& user_id) {
     return Execute<int>([&](pqxx::work& txn) {
-        std::string sql = "SELECT COUNT(*) FROM user_themes WHERE 1=1";
-        if (only_public) sql += " AND is_public = TRUE";
+        pqxx::result r;
         if (!user_id.empty()) {
-            sql += " AND creator_id = '" + txn.esc(user_id) + "'";
+            const std::string& query = only_public ? sql::THEME_COUNT_PUBLIC_BY_USER : sql::THEME_COUNT_BY_USER;
+            r = txn.exec_params(query, user_id);
+        } else {
+            const std::string& query = only_public ? sql::THEME_COUNT_PUBLIC : sql::THEME_COUNT_ALL;
+            r = txn.exec(query);
         }
-        auto r = txn.exec(sql);
         return r[0][0].as<int>();
     });
 }

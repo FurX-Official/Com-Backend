@@ -8,35 +8,18 @@ std::vector<ShopItemEntity> ShopRepository::GetShopItems(int type, bool only_on_
                                                            const std::string& sort_by,
                                                            int limit, int offset) {
     return Execute<std::vector<ShopItemEntity>>([&](pqxx::work& txn) {
-        std::string sql = R"(
-            SELECT id, type, item_id, name, description, price,
-                   discount_price, stock, sales, is_hot, is_new,
-                   start_time, end_time, tags
-            FROM shop_items WHERE is_active = TRUE
-        )";
-        std::vector<std::variant<int, std::string>> params;
-
+        pqxx::result result;
         if (type >= 0) {
-            sql += " AND type = $" + std::to_string(params.size() + 1);
-            params.push_back(type);
+            const std::string& query = only_on_sale
+                ? sql::SHOP_ITEMS_BY_TYPE_ON_SALE
+                : sql::SHOP_ITEMS_BY_TYPE;
+            result = txn.exec_params(query, type, limit, offset);
+        } else {
+            const std::string& query = only_on_sale
+                ? sql::SHOP_ITEMS_ON_SALE
+                : sql::SHOP_ITEMS_BASE;
+            result = txn.exec_params(query, limit, offset);
         }
-        if (only_on_sale) {
-            sql += " AND discount_price IS NOT NULL";
-        }
-
-        if (sort_by == "price") sql += " ORDER BY price ASC";
-        else if (sort_by == "sales") sql += " ORDER BY sales DESC";
-        else if (sort_by == "time") sql += " ORDER BY id DESC";
-        else sql += " ORDER BY is_hot DESC, is_new DESC, id ASC";
-
-        sql += " LIMIT $" + std::to_string(params.size() + 1) +
-               " OFFSET $" + std::to_string(params.size() + 2);
-
-        pqxx::prepare::invocation inv = txn.prepare(sql);
-        for (const auto& p : params) {
-            std::visit([&](auto&& arg) { inv(arg); }, p);
-        }
-        auto result = inv(limit)(offset).exec();
 
         std::vector<ShopItemEntity> items;
         for (const auto& row : result) {
@@ -66,10 +49,14 @@ std::vector<ShopItemEntity> ShopRepository::GetShopItems(int type, bool only_on_
 
 int ShopRepository::GetTotalShopItems(int type, bool only_on_sale) {
     return Execute<int>([&](pqxx::work& txn) {
-        std::string sql = "SELECT COUNT(*) FROM shop_items WHERE is_active = TRUE";
-        if (type >= 0) sql += " AND type = " + std::to_string(type);
-        if (only_on_sale) sql += " AND discount_price IS NOT NULL";
-        auto result = txn.exec(sql);
+        pqxx::result result;
+        if (type >= 0) {
+            const std::string& query = only_on_sale ? sql::SHOP_ITEMS_COUNT_BY_TYPE_ON_SALE : sql::SHOP_ITEMS_COUNT_BY_TYPE;
+            result = txn.exec_params(query, type);
+        } else {
+            const std::string& query = only_on_sale ? sql::SHOP_ITEMS_COUNT_ON_SALE : sql::SHOP_ITEMS_COUNT_ALL;
+            result = txn.exec(query);
+        }
         return result[0][0].as<int>();
     });
 }

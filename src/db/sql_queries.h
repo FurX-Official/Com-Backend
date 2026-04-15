@@ -1628,3 +1628,276 @@ const std::string RANKING_GET_TOP = R"(
     LIMIT $1 OFFSET $2
 )";
 
+
+const std::string GALLERY_COUNT_BASE = R"(SELECT COUNT(*) FROM galleries WHERE user_id = $1)";
+const std::string GALLERY_COUNT_PUBLIC = R"(SELECT COUNT(*) FROM galleries WHERE user_id = $1 AND is_public = TRUE)";
+
+const std::string THEME_COUNT_ALL = R"(SELECT COUNT(*) FROM user_themes)";
+const std::string THEME_COUNT_PUBLIC = R"(SELECT COUNT(*) FROM user_themes WHERE is_public = TRUE)";
+const std::string THEME_COUNT_BY_USER = R"(SELECT COUNT(*) FROM user_themes WHERE creator_id = $1)";
+const std::string THEME_COUNT_PUBLIC_BY_USER = R"(SELECT COUNT(*) FROM user_themes WHERE is_public = TRUE AND creator_id = $1)";
+
+const std::string QUESTION_COUNT_BASE = R"(SELECT COUNT(*) FROM box_questions WHERE box_id = $1)";
+const std::string QUESTION_COUNT_UNANSWERED = R"(SELECT COUNT(*) FROM box_questions WHERE box_id = $1 AND is_answered = FALSE)";
+
+const std::string SHOP_ITEMS_COUNT_ALL = R"(SELECT COUNT(*) FROM shop_items WHERE is_active = TRUE)";
+const std::string SHOP_ITEMS_COUNT_BY_TYPE = R"(SELECT COUNT(*) FROM shop_items WHERE is_active = TRUE AND type = $1)";
+const std::string SHOP_ITEMS_COUNT_ON_SALE = R"(SELECT COUNT(*) FROM shop_items WHERE is_active = TRUE AND discount_price IS NOT NULL)";
+const std::string SHOP_ITEMS_COUNT_BY_TYPE_ON_SALE = R"(SELECT COUNT(*) FROM shop_items WHERE is_active = TRUE AND type = $1 AND discount_price IS NOT NULL)";
+
+const std::string GIFT_GET_ALL = R"(
+    SELECT id, name, icon, price, animation, is_animated, rarity
+    FROM gift_items WHERE is_active = TRUE
+    ORDER BY price ASC
+)";
+
+const std::string GALLERY_LIST_BASE = R"(
+    SELECT g.id, g.name, g.description, g.cover_image, g.is_public,
+           g.user_id, g.created_at, g.item_count, g.view_count,
+           g.like_count, u.username, u.avatar,
+           EXISTS(SELECT 1 FROM gallery_favorites WHERE gallery_id = g.id AND user_id = $2) as is_favorited
+    FROM galleries g
+    JOIN users u ON g.user_id = u.id
+    WHERE g.user_id = $1
+)";
+
+const std::string GALLERY_LIST_PUBLIC = R"(
+    SELECT g.id, g.name, g.description, g.cover_image, g.is_public,
+           g.user_id, g.created_at, g.item_count, g.view_count,
+           g.like_count, u.username, u.avatar,
+           EXISTS(SELECT 1 FROM gallery_favorites WHERE gallery_id = g.id AND user_id = $2) as is_favorited
+    FROM galleries g
+    JOIN users u ON g.user_id = u.id
+    WHERE g.user_id = $1 AND g.is_public = TRUE
+    ORDER BY g.created_at DESC
+    LIMIT $3 OFFSET $4
+)";
+
+const std::string GALLERY_LIST_FULL = R"(
+    SELECT g.id, g.name, g.description, g.cover_image, g.is_public,
+           g.user_id, g.created_at, g.item_count, g.view_count,
+           g.like_count, u.username, u.avatar,
+           EXISTS(SELECT 1 FROM gallery_favorites WHERE gallery_id = g.id AND user_id = $2) as is_favorited
+    FROM galleries g
+    JOIN users u ON g.user_id = u.id
+    WHERE g.user_id = $1
+    ORDER BY g.created_at DESC
+    LIMIT $3 OFFSET $4
+)";
+
+const std::string THEMES_LIST_ALL = R"(
+    SELECT t.id, t.name, t.creator_id, u.username,
+           t.primary_color, t.secondary_color,
+           t.accent_color, t.bg_color, t.card_bg_color,
+           t.text_color, t.is_public, t.use_count, t.created_at
+    FROM user_themes t
+    LEFT JOIN users u ON t.creator_id = u.id
+    ORDER BY t.use_count DESC, t.created_at DESC
+    LIMIT $1 OFFSET $2
+)";
+
+const std::string THEMES_LIST_PUBLIC = R"(
+    SELECT t.id, t.name, t.creator_id, u.username,
+           t.primary_color, t.secondary_color,
+           t.accent_color, t.bg_color, t.card_bg_color,
+           t.text_color, t.is_public, t.use_count, t.created_at
+    FROM user_themes t
+    LEFT JOIN users u ON t.creator_id = u.id
+    WHERE t.is_public = TRUE
+    ORDER BY t.use_count DESC, t.created_at DESC
+    LIMIT $1 OFFSET $2
+)";
+
+const std::string THEMES_LIST_BY_USER = R"(
+    SELECT t.id, t.name, t.creator_id, u.username,
+           t.primary_color, t.secondary_color,
+           t.accent_color, t.bg_color, t.card_bg_color,
+           t.text_color, t.is_public, t.use_count, t.created_at
+    FROM user_themes t
+    LEFT JOIN users u ON t.creator_id = u.id
+    WHERE t.creator_id = $1
+    ORDER BY t.use_count DESC, t.created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string THEMES_LIST_PUBLIC_BY_USER = R"(
+    SELECT t.id, t.name, t.creator_id, u.username,
+           t.primary_color, t.secondary_color,
+           t.accent_color, t.bg_color, t.card_bg_color,
+           t.text_color, t.is_public, t.use_count, t.created_at
+    FROM user_themes t
+    LEFT JOIN users u ON t.creator_id = u.id
+    WHERE t.is_public = TRUE AND t.creator_id = $1
+    ORDER BY t.use_count DESC, t.created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string COLLECTION_LIST_BY_USER = R"(
+    SELECT id, name, description, cover_image,
+           is_public, item_count, created_at
+    FROM collections
+    WHERE user_id = $1
+    ORDER BY created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string COLLECTION_LIST_BY_USER_PUBLIC = R"(
+    SELECT id, name, description, cover_image,
+           is_public, item_count, created_at
+    FROM collections
+    WHERE user_id = $1 AND is_public = TRUE
+    ORDER BY created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string QUESTION_LIST_BASE = R"(
+    SELECT q.id, q.asker_id, u.username, u.avatar,
+           q.is_anonymous, q.content, q.answer, q.is_answered,
+           q.is_public, q.asked_at, q.answered_at
+    FROM box_questions q
+    LEFT JOIN users u ON q.asker_id = u.id
+    WHERE q.box_id = $1
+    ORDER BY q.asked_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string QUESTION_LIST_UNANSWERED = R"(
+    SELECT q.id, q.asker_id, u.username, u.avatar,
+           q.is_anonymous, q.content, q.answer, q.is_answered,
+           q.is_public, q.asked_at, q.answered_at
+    FROM box_questions q
+    LEFT JOIN users u ON q.asker_id = u.id
+    WHERE q.box_id = $1 AND q.is_answered = FALSE
+    ORDER BY q.asked_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string QUESTION_LIST_PUBLIC = R"(
+    SELECT q.id, q.asker_id, u.username, u.avatar,
+           q.is_anonymous, q.content, q.answer, q.is_answered,
+           q.is_public, q.asked_at, q.answered_at
+    FROM box_questions q
+    LEFT JOIN users u ON q.asker_id = u.id
+    WHERE q.box_id = $1 AND q.is_public = TRUE
+    ORDER BY q.asked_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string QUESTION_LIST_PUBLIC_UNANSWERED = R"(
+    SELECT q.id, q.asker_id, u.username, u.avatar,
+           q.is_anonymous, q.content, q.answer, q.is_answered,
+           q.is_public, q.asked_at, q.answered_at
+    FROM box_questions q
+    LEFT JOIN users u ON q.asker_id = u.id
+    WHERE q.box_id = $1 AND q.is_public = TRUE AND q.is_answered = FALSE
+    ORDER BY q.asked_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string SHOP_ITEMS_BASE = R"(
+    SELECT id, type, item_id, name, description, price,
+           discount_price, stock, sales, is_hot, is_new,
+           start_time, end_time, tags
+    FROM shop_items WHERE is_active = TRUE
+    ORDER BY sales DESC
+    LIMIT $1 OFFSET $2
+)";
+
+const std::string SHOP_ITEMS_BY_TYPE = R"(
+    SELECT id, type, item_id, name, description, price,
+           discount_price, stock, sales, is_hot, is_new,
+           start_time, end_time, tags
+    FROM shop_items WHERE is_active = TRUE AND type = $1
+    ORDER BY sales DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string SHOP_ITEMS_ON_SALE = R"(
+    SELECT id, type, item_id, name, description, price,
+           discount_price, stock, sales, is_hot, is_new,
+           start_time, end_time, tags
+    FROM shop_items WHERE is_active = TRUE AND discount_price IS NOT NULL
+    ORDER BY sales DESC
+    LIMIT $1 OFFSET $2
+)";
+
+const std::string SHOP_ITEMS_BY_TYPE_ON_SALE = R"(
+    SELECT id, type, item_id, name, description, price,
+           discount_price, stock, sales, is_hot, is_new,
+           start_time, end_time, tags
+    FROM shop_items WHERE is_active = TRUE AND type = $1 AND discount_price IS NOT NULL
+    ORDER BY sales DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string REDEEM_CARD_LIST_ALL = R"(
+    SELECT id, code, type, value, item_id, item_name, status,
+           max_uses, used_count, expiry_date, creator_id, used_by_id,
+           created_at, used_at, batch_no
+    FROM redeem_cards
+    ORDER BY created_at DESC
+    LIMIT $1 OFFSET $2
+)";
+
+const std::string REDEEM_CARD_LIST_BY_STATUS = R"(
+    SELECT id, code, type, value, item_id, item_name, status,
+           max_uses, used_count, expiry_date, creator_id, used_by_id,
+           created_at, used_at, batch_no
+    FROM redeem_cards WHERE status = $1
+    ORDER BY created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string REDEEM_CARD_LIST_BY_TYPE = R"(
+    SELECT id, code, type, value, item_id, item_name, status,
+           max_uses, used_count, expiry_date, creator_id, used_by_id,
+           created_at, used_at, batch_no
+    FROM redeem_cards WHERE type = $1
+    ORDER BY created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string REDEEM_CARD_LIST_BY_BATCH = R"(
+    SELECT id, code, type, value, item_id, item_name, status,
+           max_uses, used_count, expiry_date, creator_id, used_by_id,
+           created_at, used_at, batch_no
+    FROM redeem_cards WHERE batch_no = $1
+    ORDER BY created_at DESC
+    LIMIT $2 OFFSET $3
+)";
+
+const std::string REDEEM_CARD_LIST_BY_STATUS_TYPE = R"(
+    SELECT id, code, type, value, item_id, item_name, status,
+           max_uses, used_count, expiry_date, creator_id, used_by_id,
+           created_at, used_at, batch_no
+    FROM redeem_cards WHERE status = $1 AND type = $2
+    ORDER BY created_at DESC
+    LIMIT $3 OFFSET $4
+)";
+
+const std::string REDEEM_CARD_LIST_BY_STATUS_BATCH = R"(
+    SELECT id, code, type, value, item_id, item_name, status,
+           max_uses, used_count, expiry_date, creator_id, used_by_id,
+           created_at, used_at, batch_no
+    FROM redeem_cards WHERE status = $1 AND batch_no = $2
+    ORDER BY created_at DESC
+    LIMIT $3 OFFSET $4
+)";
+
+const std::string REDEEM_CARD_LIST_BY_TYPE_BATCH = R"(
+    SELECT id, code, type, value, item_id, item_name, status,
+           max_uses, used_count, expiry_date, creator_id, used_by_id,
+           created_at, used_at, batch_no
+    FROM redeem_cards WHERE type = $1 AND batch_no = $2
+    ORDER BY created_at DESC
+    LIMIT $3 OFFSET $4
+)";
+
+const std::string REDEEM_CARD_LIST_FULL = R"(
+    SELECT id, code, type, value, item_id, item_name, status,
+           max_uses, used_count, expiry_date, creator_id, used_by_id,
+           created_at, used_at, batch_no
+    FROM redeem_cards WHERE status = $1 AND type = $2 AND batch_no = $3
+    ORDER BY created_at DESC
+    LIMIT $4 OFFSET $5
+)";

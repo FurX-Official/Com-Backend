@@ -199,11 +199,7 @@ int SocialRepository::GetFavoriteFursonaCount(const std::string& user_id) {
 
 std::vector<GiftEntity> SocialRepository::GetAllGifts() {
     return Execute<std::vector<GiftEntity>>([&](pqxx::work& txn) {
-        auto result = txn.exec(R"(
-            SELECT id, name, icon, price, animation, is_animated, rarity
-            FROM gift_items WHERE is_active = TRUE
-            ORDER BY price ASC
-        )");
+        auto result = txn.exec(sql::GIFT_GET_ALL);
 
         std::vector<GiftEntity> gifts;
         for (const auto& row : result) {
@@ -530,20 +526,18 @@ std::vector<QuestionEntity> SocialRepository::GetQuestions(
         auto owner = GetQuestionBoxOwner(box_id);
         bool is_owner = owner && viewer_id == *owner;
 
-        std::string sql = R"(
-            SELECT q.id, q.asker_id, u.username, u.avatar,
-                   q.is_anonymous, q.content, q.answer, q.is_answered,
-                   q.is_public, q.asked_at, q.answered_at
-            FROM box_questions q
-            LEFT JOIN users u ON q.asker_id = u.id
-            WHERE q.box_id = $1
-        )";
-        if (only_unanswered) sql += " AND q.is_answered = FALSE";
-        if (!is_owner) sql += " AND q.is_public = TRUE";
-        sql += " ORDER BY q.asked_at DESC LIMIT $" + std::to_string(2) + 
-               " OFFSET $" + std::to_string(3);
-
-        auto result = txn.exec_params(sql, box_id, limit, offset);
+        pqxx::result result;
+        if (!is_owner) {
+            const std::string& query = only_unanswered
+                ? sql::QUESTION_LIST_PUBLIC_UNANSWERED
+                : sql::QUESTION_LIST_PUBLIC;
+            result = txn.exec_params(query, box_id, limit, offset);
+        } else {
+            const std::string& query = only_unanswered
+                ? sql::QUESTION_LIST_UNANSWERED
+                : sql::QUESTION_LIST_BASE;
+            result = txn.exec_params(query, box_id, limit, offset);
+        }
 
         std::vector<QuestionEntity> questions;
         for (const auto& row : result) {
@@ -570,9 +564,8 @@ std::vector<QuestionEntity> SocialRepository::GetQuestions(
 
 int SocialRepository::GetQuestionCount(int64_t box_id, bool only_unanswered) {
     return Execute<int>([&](pqxx::work& txn) {
-        std::string sql = "SELECT COUNT(*) FROM box_questions WHERE box_id = $1";
-        if (only_unanswered) sql += " AND is_answered = FALSE";
-        auto result = txn.exec_params(sql, box_id);
+        const std::string& query = only_unanswered ? sql::QUESTION_COUNT_UNANSWERED : sql::QUESTION_COUNT_BASE;
+        auto result = txn.exec_params(query, box_id);
         return result[0][0].as<int>();
     });
 }

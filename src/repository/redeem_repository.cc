@@ -44,34 +44,29 @@ std::vector<RedeemCardEntity> RedeemRepository::GetCardList(int status, int type
                                                              const std::string& batch_no,
                                                              int limit, int offset) {
     return Execute<std::vector<RedeemCardEntity>>([&](pqxx::work& txn) {
-        std::string sql = R"(
-            SELECT id, code, type, value, item_id, item_name, status,
-                   max_uses, used_count, expiry_date, creator_id, used_by_id,
-                   created_at, used_at, batch_no
-            FROM redeem_cards WHERE 1=1
-        )";
-        std::vector<std::variant<int, std::string>> params;
+        pqxx::result result;
+        
+        bool has_status = status >= 0;
+        bool has_type = type >= 0;
+        bool has_batch = !batch_no.empty();
 
-        if (status >= 0) {
-            sql += " AND status = $" + std::to_string(params.size() + 1);
-            params.push_back(status);
+        if (!has_status && !has_type && !has_batch) {
+            result = txn.exec_params(sql::REDEEM_CARD_LIST_ALL, limit, offset);
+        } else if (has_status && !has_type && !has_batch) {
+            result = txn.exec_params(sql::REDEEM_CARD_LIST_BY_STATUS, status, limit, offset);
+        } else if (!has_status && has_type && !has_batch) {
+            result = txn.exec_params(sql::REDEEM_CARD_LIST_BY_TYPE, type, limit, offset);
+        } else if (!has_status && !has_type && has_batch) {
+            result = txn.exec_params(sql::REDEEM_CARD_LIST_BY_BATCH, batch_no, limit, offset);
+        } else if (has_status && has_type && !has_batch) {
+            result = txn.exec_params(sql::REDEEM_CARD_LIST_BY_STATUS_TYPE, status, type, limit, offset);
+        } else if (has_status && !has_type && has_batch) {
+            result = txn.exec_params(sql::REDEEM_CARD_LIST_BY_STATUS_BATCH, status, batch_no, limit, offset);
+        } else if (!has_status && has_type && has_batch) {
+            result = txn.exec_params(sql::REDEEM_CARD_LIST_BY_TYPE_BATCH, type, batch_no, limit, offset);
+        } else {
+            result = txn.exec_params(sql::REDEEM_CARD_LIST_FULL, status, type, batch_no, limit, offset);
         }
-        if (type >= 0) {
-            sql += " AND type = $" + std::to_string(params.size() + 1);
-            params.push_back(type);
-        }
-        if (!batch_no.empty()) {
-            sql += " AND batch_no = $" + std::to_string(params.size() + 1);
-            params.push_back(batch_no);
-        }
-        sql += " ORDER BY created_at DESC LIMIT $" + std::to_string(params.size() + 1) +
-               " OFFSET $" + std::to_string(params.size() + 2);
-
-        pqxx::prepare::invocation inv = txn.prepare(sql);
-        for (const auto& p : params) {
-            std::visit([&](auto&& arg) { inv(arg); }, p);
-        }
-        auto result = inv(limit)(offset).exec();
 
         std::vector<RedeemCardEntity> cards;
         for (const auto& row : result) {

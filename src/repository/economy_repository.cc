@@ -197,30 +197,10 @@ std::vector<GalleryEntity> EconomyRepository::GetGalleries(
     const std::string& user_id, const std::string& viewer_id,
     bool only_public, int limit, int offset) {
     return Execute<std::vector<GalleryEntity>>([&](pqxx::work& txn) {
-        std::string sql = R"(
-            SELECT g.id, g.name, g.description, g.cover_image,
-                   g.is_public, g.is_nsfw, g.item_count, g.view_count,
-                   g.like_count, g.created_at, u.username, u.avatar,
-                   EXISTS(SELECT 1 FROM gallery_favorites gf
-                          WHERE gf.gallery_id = g.id AND gf.user_id = $2)
-            FROM galleries g
-            JOIN users u ON g.user_id = u.id
-            WHERE g.user_id = $1
-        )";
-        std::string final_sql;
-        if (only_public && user_id != viewer_id) {
-            sql += " AND g.is_public = TRUE";
-        }
-        sql += " ORDER BY g.created_at DESC LIMIT $" + std::to_string(3) +
-               " OFFSET $" + std::to_string(4);
-
-        final_sql = sql;
-        final_sql.replace(final_sql.find("$1"), 2, "'" + txn.esc(user_id) + "'");
-        final_sql.replace(final_sql.find("$2"), 2, "'" + txn.esc(viewer_id) + "'");
-        final_sql.replace(final_sql.find("$3"), 2, std::to_string(limit));
-        final_sql.replace(final_sql.find("$4"), 2, std::to_string(offset));
-
-        auto result = txn.exec(final_sql);
+        const std::string& query = (only_public && user_id != viewer_id)
+            ? sql::GALLERY_LIST_PUBLIC
+            : sql::GALLERY_LIST_FULL;
+        auto result = txn.exec_params(query, user_id, viewer_id, limit, offset);
 
         std::vector<GalleryEntity> list;
         for (const auto& row : result) {
@@ -239,9 +219,8 @@ std::vector<GalleryEntity> EconomyRepository::GetGalleries(
 
 int EconomyRepository::GetGalleryCount(const std::string& user_id, bool only_public) {
     return Execute<int>([&](pqxx::work& txn) {
-        std::string sql = "SELECT COUNT(*) FROM galleries WHERE user_id = $1";
-        if (only_public) sql += " AND is_public = TRUE";
-        auto r = txn.exec_params(sql, user_id);
+        const std::string& query = only_public ? sql::GALLERY_COUNT_PUBLIC : sql::GALLERY_COUNT_BASE;
+        auto r = txn.exec_params(query, user_id);
         return r[0][0].as<int>();
     });
 }
@@ -765,18 +744,10 @@ std::vector<CollectionEntity> EconomyRepository::GetUserCollections(
     const std::string& user_id, const std::string& viewer_id,
     int limit, int offset) {
     return Execute<std::vector<CollectionEntity>>([&](pqxx::work& txn) {
-        std::string sql = R"(
-            SELECT id, name, description, cover_image,
-                   is_public, item_count, created_at
-            FROM collections
-            WHERE user_id = $1
-        )";
-        if (user_id != viewer_id) {
-            sql += " AND is_public = TRUE";
-        }
-        sql += " ORDER BY created_at DESC LIMIT $2 OFFSET $3";
-
-        auto result = txn.exec_params(sql, user_id, limit, offset);
+        const std::string& query = (user_id != viewer_id)
+            ? sql::COLLECTION_LIST_BY_USER_PUBLIC
+            : sql::COLLECTION_LIST_BY_USER;
+        auto result = txn.exec_params(query, user_id, limit, offset);
 
         std::vector<CollectionEntity> list;
         for (const auto& row : result) {
