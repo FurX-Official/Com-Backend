@@ -1562,3 +1562,97 @@ CREATE TABLE IF NOT EXISTS drafts (
 );
 
 CREATE INDEX idx_drafts_user ON drafts(user_id);
+
+CREATE TABLE IF NOT EXISTS user_profile_custom (
+    user_id VARCHAR(128) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    theme VARCHAR(32) DEFAULT 'default',
+    bg_color VARCHAR(16),
+    bg_image VARCHAR(256),
+    card_style INT DEFAULT 0,
+    layout_type INT DEFAULT 0,
+    show_fursona_first BOOLEAN DEFAULT TRUE,
+    show_badges BOOLEAN DEFAULT TRUE,
+    show_achievement BOOLEAN DEFAULT TRUE,
+    music_url VARCHAR(256),
+    custom_css TEXT,
+    sidebar_widgets VARCHAR(64)[],
+    updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS fursona_card_custom (
+    fursona_id BIGINT PRIMARY KEY REFERENCES fursonas(id) ON DELETE CASCADE,
+    card_theme VARCHAR(32) DEFAULT 'classic',
+    border_color VARCHAR(16),
+    bg_pattern INT DEFAULT 0,
+    accent_color VARCHAR(16),
+    font_style INT DEFAULT 0,
+    show_stats BOOLEAN DEFAULT TRUE,
+    show_artwork BOOLEAN DEFAULT TRUE,
+    custom_fields JSONB,
+    updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS notification_settings (
+    user_id VARCHAR(128) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    mention_email BOOLEAN DEFAULT TRUE,
+    mention_push BOOLEAN DEFAULT TRUE,
+    comment_email BOOLEAN DEFAULT TRUE,
+    comment_push BOOLEAN DEFAULT TRUE,
+    follow_email BOOLEAN DEFAULT TRUE,
+    follow_push BOOLEAN DEFAULT TRUE,
+    like_email BOOLEAN DEFAULT FALSE,
+    like_push BOOLEAN DEFAULT TRUE,
+    gift_email BOOLEAN DEFAULT TRUE,
+    gift_push BOOLEAN DEFAULT TRUE,
+    message_email BOOLEAN DEFAULT TRUE,
+    message_push BOOLEAN DEFAULT TRUE,
+    event_email BOOLEAN DEFAULT TRUE,
+    event_push BOOLEAN DEFAULT TRUE,
+    weekly_digest BOOLEAN DEFAULT TRUE,
+    marketing_email BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS feed_settings (
+    user_id VARCHAR(128) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    default_sort VARCHAR(32) DEFAULT 'hot',
+    show_avatars BOOLEAN DEFAULT TRUE,
+    show_signatures BOOLEAN DEFAULT TRUE,
+    compact_mode BOOLEAN DEFAULT FALSE,
+    posts_per_page INT DEFAULT 20,
+    auto_load_more BOOLEAN DEFAULT TRUE,
+    blur_nsfw BOOLEAN DEFAULT TRUE,
+    hide_nsfw BOOLEAN DEFAULT FALSE,
+    blocked_tags VARCHAR(64)[],
+    blocked_users VARCHAR(128)[]
+);
+
+CREATE TABLE IF NOT EXISTS group_custom_settings (
+    group_id INT PRIMARY KEY REFERENCES user_groups(id) ON DELETE CASCADE,
+    entry_message TEXT,
+    require_approval BOOLEAN DEFAULT FALSE,
+    approval_questions TEXT[],
+    group_icon VARCHAR(256),
+    group_color VARCHAR(16),
+    custom_rules TEXT,
+    allow_image_posts BOOLEAN DEFAULT TRUE,
+    allow_link_posts BOOLEAN DEFAULT TRUE,
+    post_cooldown INT DEFAULT 0,
+    mod_can_delete BOOLEAN DEFAULT TRUE,
+    mod_can_ban BOOLEAN DEFAULT FALSE,
+    visible_members BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS user_themes (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(64) NOT NULL,
+    creator_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    primary_color VARCHAR(16),
+    secondary_color VARCHAR(16),
+    accent_color VARCHAR(16),
+    bg_color VARCHAR(16),
+    card_bg_color VARCHAR(16),
+    text_color VARCHAR(16),
+    is_public BOOLEAN DEFAULT FALSE,
+    use_count INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);

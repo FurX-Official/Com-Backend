@@ -8,11 +8,6 @@
 
 namespace furbbs::service {
 
-struct CustomizationResult {
-    bool success = false;
-    std::string message;
-};
-
 class CustomizationService {
 public:
     static CustomizationService& Instance() {
@@ -20,20 +15,27 @@ public:
         return instance;
     }
 
-    std::vector<repository::TitleEntity> GetAllTitles();
-    CustomizationResult SetActiveTitle(const std::string& token, int32_t title_id);
+    repository::ProfileCustomEntity GetProfileCustom(const std::string& token, const std::string& user_id);
+    bool UpdateProfileCustom(const std::string& token, const repository::ProfileCustomEntity& custom);
 
-    std::vector<repository::AvatarFrameEntity> GetAllAvatarFrames();
-    CustomizationResult SetActiveFrame(const std::string& token, int32_t frame_id);
+    repository::FursonaCardCustomEntity GetFursonaCardCustom(int64_t fursona_id);
+    bool UpdateFursonaCardCustom(const std::string& token, const repository::FursonaCardCustomEntity& custom);
 
-    std::vector<repository::NameplateEntity> GetAllNameplates();
-    std::vector<repository::ThemeEntity> GetAllThemes();
-    CustomizationResult SetCustomization(const std::string& token,
-                                          int32_t nameplate_id, int32_t theme_id);
+    repository::NotificationSettingsEntity GetNotificationSettings(const std::string& token);
+    bool UpdateNotificationSettings(const std::string& token, const repository::NotificationSettingsEntity& settings);
+
+    repository::FeedSettingsEntity GetFeedSettings(const std::string& token);
+    bool UpdateFeedSettings(const std::string& token, const repository::FeedSettingsEntity& settings);
+
+    int64_t CreateTheme(const std::string& token, const repository::UserThemeEntity& theme);
+    std::vector<repository::UserThemeEntity> GetThemes(
+        bool only_public, const std::string& user_id, int page, int page_size, int& out_total);
+
+    repository::GroupCustomSettingsEntity GetGroupCustomSettings(const std::string& token, int64_t group_id);
+    bool UpdateGroupCustomSettings(const std::string& token, const repository::GroupCustomSettingsEntity& settings);
 
 private:
     CustomizationService() = default;
-    int64_t GetCurrentTimestamp();
 };
 
 } // namespace furbbs::service

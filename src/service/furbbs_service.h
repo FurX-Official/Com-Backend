@@ -745,6 +745,54 @@ public:
     ::trpc::Status DeleteDraft(::trpc::ServerContextPtr context,
                                 const ::furbbs::DeleteDraftRequest* request,
                                 ::furbbs::DeleteDraftResponse* response) override;
+
+    ::trpc::Status GetProfileCustom(::trpc::ServerContextPtr context,
+                                    const ::furbbs::GetProfileCustomRequest* request,
+                                    ::furbbs::GetProfileCustomResponse* response) override;
+
+    ::trpc::Status UpdateProfileCustom(::trpc::ServerContextPtr context,
+                                       const ::furbbs::UpdateProfileCustomRequest* request,
+                                       ::furbbs::UpdateProfileCustomResponse* response) override;
+
+    ::trpc::Status GetFursonaCardCustom(::trpc::ServerContextPtr context,
+                                        const ::furbbs::GetFursonaCardCustomRequest* request,
+                                        ::furbbs::GetFursonaCardCustomResponse* response) override;
+
+    ::trpc::Status UpdateFursonaCardCustom(::trpc::ServerContextPtr context,
+                                           const ::furbbs::UpdateFursonaCardCustomRequest* request,
+                                           ::furbbs::UpdateFursonaCardCustomResponse* response) override;
+
+    ::trpc::Status GetNotificationSettings(::trpc::ServerContextPtr context,
+                                            const ::furbbs::GetNotificationSettingsRequest* request,
+                                            ::furbbs::GetNotificationSettingsResponse* response) override;
+
+    ::trpc::Status UpdateNotificationSettings(::trpc::ServerContextPtr context,
+                                               const ::furbbs::UpdateNotificationSettingsRequest* request,
+                                               ::furbbs::UpdateNotificationSettingsResponse* response) override;
+
+    ::trpc::Status GetFeedSettings(::trpc::ServerContextPtr context,
+                                    const ::furbbs::GetFeedSettingsRequest* request,
+                                    ::furbbs::GetFeedSettingsResponse* response) override;
+
+    ::trpc::Status UpdateFeedSettings(::trpc::ServerContextPtr context,
+                                       const ::furbbs::UpdateFeedSettingsRequest* request,
+                                       ::furbbs::UpdateFeedSettingsResponse* response) override;
+
+    ::trpc::Status CreateUserTheme(::trpc::ServerContextPtr context,
+                                   const ::furbbs::CreateThemeRequest* request,
+                                   ::furbbs::CreateThemeResponse* response) override;
+
+    ::trpc::Status GetUserThemes(::trpc::ServerContextPtr context,
+                                 const ::furbbs::GetThemeListRequest* request,
+                                 ::furbbs::GetThemeListResponse* response) override;
+
+    ::trpc::Status GetGroupCustomSettings(::trpc::ServerContextPtr context,
+                                          const ::furbbs::GetGroupCustomSettingsRequest* request,
+                                          ::furbbs::GetGroupCustomSettingsResponse* response) override;
+
+    ::trpc::Status UpdateGroupCustomSettings(::trpc::ServerContextPtr context,
+                                             const ::furbbs::UpdateGroupCustomSettingsRequest* request,
+                                             ::furbbs::UpdateGroupCustomSettingsResponse* response) override;
 };
 
 } // namespace furbbs::service

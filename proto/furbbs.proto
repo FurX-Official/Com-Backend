@@ -474,12 +474,231 @@ message FollowUserRequest {
     string access_token = 2;
 }
 
-message FollowUserResponse {
+message DeleteDraftResponse {
     int32 code = 1;
     string message = 2;
 }
 
-service FurBBSService {
+message ProfileCustom {
+    string theme = 1;
+    string bg_color = 2;
+    string bg_image = 3;
+    int32 card_style = 4;
+    int32 layout_type = 5;
+    bool show_fursona_first = 6;
+    bool show_badges = 7;
+    bool show_achievement = 8;
+    string music_url = 9;
+    string custom_css = 10;
+    repeated string sidebar_widgets = 11;
+    int64 updated_at = 12;
+}
+
+message GetProfileCustomRequest {
+    string access_token = 1;
+    string user_id = 2;
+}
+
+message GetProfileCustomResponse {
+    int32 code = 1;
+    string message = 2;
+    ProfileCustom custom = 3;
+}
+
+message UpdateProfileCustomRequest {
+    string access_token = 1;
+    ProfileCustom custom = 2;
+}
+
+message UpdateProfileCustomResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message FursonaCardCustom {
+    int64 fursona_id = 1;
+    string card_theme = 2;
+    string border_color = 3;
+    int32 bg_pattern = 4;
+    string accent_color = 5;
+    int32 font_style = 6;
+    bool show_stats = 7;
+    bool show_artwork = 8;
+    map<string, string> custom_fields = 9;
+    int64 updated_at = 10;
+}
+
+message GetFursonaCardCustomRequest {
+    int64 fursona_id = 1;
+}
+
+message GetFursonaCardCustomResponse {
+    int32 code = 1;
+    string message = 2;
+    FursonaCardCustom custom = 3;
+}
+
+message UpdateFursonaCardCustomRequest {
+    string access_token = 1;
+    FursonaCardCustom custom = 2;
+}
+
+message UpdateFursonaCardCustomResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message NotificationSettings {
+    bool mention_email = 1;
+    bool mention_push = 2;
+    bool comment_email = 3;
+    bool comment_push = 4;
+    bool follow_email = 5;
+    bool follow_push = 6;
+    bool like_email = 7;
+    bool like_push = 8;
+    bool gift_email = 9;
+    bool gift_push = 10;
+    bool message_email = 11;
+    bool message_push = 12;
+    bool event_email = 13;
+    bool event_push = 14;
+    bool weekly_digest = 15;
+    bool marketing_email = 16;
+}
+
+message GetNotificationSettingsRequest {
+    string access_token = 1;
+}
+
+message GetNotificationSettingsResponse {
+    int32 code = 1;
+    string message = 2;
+    NotificationSettings settings = 3;
+}
+
+message UpdateNotificationSettingsRequest {
+    string access_token = 1;
+    NotificationSettings settings = 2;
+}
+
+message UpdateNotificationSettingsResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message FeedSettings {
+    string default_sort = 1;
+    bool show_avatars = 2;
+    bool show_signatures = 3;
+    bool compact_mode = 4;
+    int32 posts_per_page = 5;
+    bool auto_load_more = 6;
+    bool blur_nsfw = 7;
+    bool hide_nsfw = 8;
+    repeated string blocked_tags = 9;
+    repeated string blocked_users = 10;
+}
+
+message GetFeedSettingsRequest {
+    string access_token = 1;
+}
+
+message GetFeedSettingsResponse {
+    int32 code = 1;
+    string message = 2;
+    FeedSettings settings = 3;
+}
+
+message UpdateFeedSettingsRequest {
+    string access_token = 1;
+    FeedSettings settings = 2;
+}
+
+message UpdateFeedSettingsResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message UserTheme {
+    int64 id = 1;
+    string name = 2;
+    string creator_id = 3;
+    string creator_name = 4;
+    string primary_color = 5;
+    string secondary_color = 6;
+    string accent_color = 7;
+    string bg_color = 8;
+    string card_bg_color = 9;
+    string text_color = 10;
+    bool is_public = 11;
+    int32 use_count = 12;
+    int64 created_at = 13;
+}
+
+message CreateThemeRequest {
+    string access_token = 1;
+    UserTheme theme = 2;
+}
+
+message CreateThemeResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 theme_id = 3;
+}
+
+message GetThemeListRequest {
+    bool only_public = 1;
+    string user_id = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetThemeListResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated UserTheme themes = 3;
+    int32 total = 4;
+}
+
+message GroupCustomSettings {
+    int64 group_id = 1;
+    string entry_message = 2;
+    bool require_approval = 3;
+    repeated string approval_questions = 4;
+    string group_icon = 5;
+    string group_color = 6;
+    string custom_rules = 7;
+    bool allow_image_posts = 8;
+    bool allow_link_posts = 9;
+    int32 post_cooldown = 10;
+    bool mod_can_delete = 11;
+    bool mod_can_ban = 12;
+    bool visible_members = 13;
+}
+
+message GetGroupCustomSettingsRequest {
+    string access_token = 1;
+    int64 group_id = 2;
+}
+
+message GetGroupCustomSettingsResponse {
+    int32 code = 1;
+    string message = 2;
+    GroupCustomSettings settings = 3;
+}
+
+message UpdateGroupCustomSettingsRequest {
+    string access_token = 1;
+    GroupCustomSettings settings = 2;
+}
+
+message UpdateGroupCustomSettingsResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+service FurBBSService {{
     rpc GetUser(GetUserRequest) returns (GetUserResponse);
     rpc CreatePost(CreatePostRequest) returns (CreatePostResponse);
     rpc GetPost(GetPostRequest) returns (GetPostResponse);
@@ -734,6 +953,24 @@ service FurBBSService {
     rpc SaveDraft(SaveDraftRequest) returns (SaveDraftResponse);
     rpc GetDrafts(GetDraftsRequest) returns (GetDraftsResponse);
     rpc DeleteDraft(DeleteDraftRequest) returns (DeleteDraftResponse);
+
+    rpc GetProfileCustom(GetProfileCustomRequest) returns (GetProfileCustomResponse);
+    rpc UpdateProfileCustom(UpdateProfileCustomRequest) returns (UpdateProfileCustomResponse);
+
+    rpc GetFursonaCardCustom(GetFursonaCardCustomRequest) returns (GetFursonaCardCustomResponse);
+    rpc UpdateFursonaCardCustom(UpdateFursonaCardCustomRequest) returns (UpdateFursonaCardCustomResponse);
+
+    rpc GetNotificationSettings(GetNotificationSettingsRequest) returns (GetNotificationSettingsResponse);
+    rpc UpdateNotificationSettings(UpdateNotificationSettingsRequest) returns (UpdateNotificationSettingsResponse);
+
+    rpc GetFeedSettings(GetFeedSettingsRequest) returns (GetFeedSettingsResponse);
+    rpc UpdateFeedSettings(UpdateFeedSettingsRequest) returns (UpdateFeedSettingsResponse);
+
+    rpc CreateUserTheme(CreateThemeRequest) returns (CreateThemeResponse);
+    rpc GetUserThemes(GetThemeListRequest) returns (GetThemeListResponse);
+
+    rpc GetGroupCustomSettings(GetGroupCustomSettingsRequest) returns (GetGroupCustomSettingsResponse);
+    rpc UpdateGroupCustomSettings(UpdateGroupCustomSettingsRequest) returns (UpdateGroupCustomSettingsResponse);
 }
 
 message HealthCheckRequest {}

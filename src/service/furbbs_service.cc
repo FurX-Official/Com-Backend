@@ -15,6 +15,7 @@
 #include "../service_impl/shop_service.h"
 #include "../service_impl/social_service.h"
 #include "../service_impl/advanced_service.h"
+#include "../service_impl/customization_service.h"
 
 namespace furbbs::service {
 
@@ -7464,6 +7465,338 @@ static const int64_t SERVER_START_TIME = std::chrono::duration_cast<std::chrono:
     );
     response->set_code(success ? 200 : 404);
     response->set_message(success ? "Deleted" : "Not found");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetProfileCustom(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetProfileCustomRequest* request,
+                                                   ::furbbs::GetProfileCustomResponse* response) {
+    auto custom = service::CustomizationService::Instance().GetProfileCustom(
+        request->access_token(),
+        request->user_id()
+    );
+
+    auto* c = response->mutable_custom();
+    c->set_theme(custom.theme);
+    c->set_bg_color(custom.bg_color);
+    c->set_bg_image(custom.bg_image);
+    c->set_card_style(custom.card_style);
+    c->set_layout_type(custom.layout_type);
+    c->set_show_fursona_first(custom.show_fursona_first);
+    c->set_show_badges(custom.show_badges);
+    c->set_show_achievement(custom.show_achievement);
+    c->set_music_url(custom.music_url);
+    c->set_custom_css(custom.custom_css);
+    for (const auto& w : custom.sidebar_widgets) {
+        c->add_sidebar_widgets(w);
+    }
+    c->set_updated_at(custom.updated_at);
+
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::UpdateProfileCustom(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::UpdateProfileCustomRequest* request,
+                                                      ::furbbs::UpdateProfileCustomResponse* response) {
+    furbbs::repository::ProfileCustomEntity custom;
+    custom.theme = request->custom().theme();
+    custom.bg_color = request->custom().bg_color();
+    custom.bg_image = request->custom().bg_image();
+    custom.card_style = request->custom().card_style();
+    custom.layout_type = request->custom().layout_type();
+    custom.show_fursona_first = request->custom().show_fursona_first();
+    custom.show_badges = request->custom().show_badges();
+    custom.show_achievement = request->custom().show_achievement();
+    custom.music_url = request->custom().music_url();
+    custom.custom_css = request->custom().custom_css();
+    for (int i = 0; i < request->custom().sidebar_widgets_size(); i++) {
+        custom.sidebar_widgets.push_back(request->custom().sidebar_widgets(i));
+    }
+
+    bool success = service::CustomizationService::Instance().UpdateProfileCustom(
+        request->access_token(), custom);
+
+    response->set_code(success ? 200 : 401);
+    response->set_message(success ? "Updated" : "Unauthorized");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetFursonaCardCustom(::trpc::ServerContextPtr context,
+                                                        const ::furbbs::GetFursonaCardCustomRequest* request,
+                                                        ::furbbs::GetFursonaCardCustomResponse* response) {
+    auto custom = service::CustomizationService::Instance().GetFursonaCardCustom(
+        request->fursona_id());
+
+    auto* c = response->mutable_custom();
+    c->set_fursona_id(custom.fursona_id);
+    c->set_card_theme(custom.card_theme);
+    c->set_border_color(custom.border_color);
+    c->set_bg_pattern(custom.bg_pattern);
+    c->set_accent_color(custom.accent_color);
+    c->set_font_style(custom.font_style);
+    c->set_show_stats(custom.show_stats);
+    c->set_show_artwork(custom.show_artwork);
+    for (const auto& [k, v] : custom.custom_fields) {
+        (*c->mutable_custom_fields())[k] = v;
+    }
+    c->set_updated_at(custom.updated_at);
+
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::UpdateFursonaCardCustom(::trpc::ServerContextPtr context,
+                                                           const ::furbbs::UpdateFursonaCardCustomRequest* request,
+                                                           ::furbbs::UpdateFursonaCardCustomResponse* response) {
+    furbbs::repository::FursonaCardCustomEntity custom;
+    custom.fursona_id = request->custom().fursona_id();
+    custom.card_theme = request->custom().card_theme();
+    custom.border_color = request->custom().border_color();
+    custom.bg_pattern = request->custom().bg_pattern();
+    custom.accent_color = request->custom().accent_color();
+    custom.font_style = request->custom().font_style();
+    custom.show_stats = request->custom().show_stats();
+    custom.show_artwork = request->custom().show_artwork();
+    for (const auto& [k, v] : request->custom().custom_fields()) {
+        custom.custom_fields[k] = v;
+    }
+
+    bool success = service::CustomizationService::Instance().UpdateFursonaCardCustom(
+        request->access_token(), custom);
+
+    response->set_code(success ? 200 : 403);
+    response->set_message(success ? "Updated" : "Permission denied");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetNotificationSettings(::trpc::ServerContextPtr context,
+                                                           const ::furbbs::GetNotificationSettingsRequest* request,
+                                                           ::furbbs::GetNotificationSettingsResponse* response) {
+    auto settings = service::CustomizationService::Instance().GetNotificationSettings(
+        request->access_token());
+
+    auto* s = response->mutable_settings();
+    s->set_mention_email(settings.mention_email);
+    s->set_mention_push(settings.mention_push);
+    s->set_comment_email(settings.comment_email);
+    s->set_comment_push(settings.comment_push);
+    s->set_follow_email(settings.follow_email);
+    s->set_follow_push(settings.follow_push);
+    s->set_like_email(settings.like_email);
+    s->set_like_push(settings.like_push);
+    s->set_gift_email(settings.gift_email);
+    s->set_gift_push(settings.gift_push);
+    s->set_message_email(settings.message_email);
+    s->set_message_push(settings.message_push);
+    s->set_event_email(settings.event_email);
+    s->set_event_push(settings.event_push);
+    s->set_weekly_digest(settings.weekly_digest);
+    s->set_marketing_email(settings.marketing_email);
+
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::UpdateNotificationSettings(::trpc::ServerContextPtr context,
+                                                              const ::furbbs::UpdateNotificationSettingsRequest* request,
+                                                              ::furbbs::UpdateNotificationSettingsResponse* response) {
+    furbbs::repository::NotificationSettingsEntity settings;
+    settings.mention_email = request->settings().mention_email();
+    settings.mention_push = request->settings().mention_push();
+    settings.comment_email = request->settings().comment_email();
+    settings.comment_push = request->settings().comment_push();
+    settings.follow_email = request->settings().follow_email();
+    settings.follow_push = request->settings().follow_push();
+    settings.like_email = request->settings().like_email();
+    settings.like_push = request->settings().like_push();
+    settings.gift_email = request->settings().gift_email();
+    settings.gift_push = request->settings().gift_push();
+    settings.message_email = request->settings().message_email();
+    settings.message_push = request->settings().message_push();
+    settings.event_email = request->settings().event_email();
+    settings.event_push = request->settings().event_push();
+    settings.weekly_digest = request->settings().weekly_digest();
+    settings.marketing_email = request->settings().marketing_email();
+
+    bool success = service::CustomizationService::Instance().UpdateNotificationSettings(
+        request->access_token(), settings);
+
+    response->set_code(success ? 200 : 401);
+    response->set_message(success ? "Updated" : "Unauthorized");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetFeedSettings(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetFeedSettingsRequest* request,
+                                                   ::furbbs::GetFeedSettingsResponse* response) {
+    auto settings = service::CustomizationService::Instance().GetFeedSettings(
+        request->access_token());
+
+    auto* s = response->mutable_settings();
+    s->set_default_sort(settings.default_sort);
+    s->set_show_avatars(settings.show_avatars);
+    s->set_show_signatures(settings.show_signatures);
+    s->set_compact_mode(settings.compact_mode);
+    s->set_posts_per_page(settings.posts_per_page);
+    s->set_auto_load_more(settings.auto_load_more);
+    s->set_blur_nsfw(settings.blur_nsfw);
+    s->set_hide_nsfw(settings.hide_nsfw);
+    for (const auto& t : settings.blocked_tags) {
+        s->add_blocked_tags(t);
+    }
+    for (const auto& u : settings.blocked_users) {
+        s->add_blocked_users(u);
+    }
+
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::UpdateFeedSettings(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::UpdateFeedSettingsRequest* request,
+                                                      ::furbbs::UpdateFeedSettingsResponse* response) {
+    furbbs::repository::FeedSettingsEntity settings;
+    settings.default_sort = request->settings().default_sort();
+    settings.show_avatars = request->settings().show_avatars();
+    settings.show_signatures = request->settings().show_signatures();
+    settings.compact_mode = request->settings().compact_mode();
+    settings.posts_per_page = request->settings().posts_per_page();
+    settings.auto_load_more = request->settings().auto_load_more();
+    settings.blur_nsfw = request->settings().blur_nsfw();
+    settings.hide_nsfw = request->settings().hide_nsfw();
+    for (int i = 0; i < request->settings().blocked_tags_size(); i++) {
+        settings.blocked_tags.push_back(request->settings().blocked_tags(i));
+    }
+    for (int i = 0; i < request->settings().blocked_users_size(); i++) {
+        settings.blocked_users.push_back(request->settings().blocked_users(i));
+    }
+
+    bool success = service::CustomizationService::Instance().UpdateFeedSettings(
+        request->access_token(), settings);
+
+    response->set_code(success ? 200 : 401);
+    response->set_message(success ? "Updated" : "Unauthorized");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::CreateUserTheme(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::CreateThemeRequest* request,
+                                                   ::furbbs::CreateThemeResponse* response) {
+    furbbs::repository::UserThemeEntity theme;
+    theme.name = request->theme().name();
+    theme.primary_color = request->theme().primary_color();
+    theme.secondary_color = request->theme().secondary_color();
+    theme.accent_color = request->theme().accent_color();
+    theme.bg_color = request->theme().bg_color();
+    theme.card_bg_color = request->theme().card_bg_color();
+    theme.text_color = request->theme().text_color();
+    theme.is_public = request->theme().is_public();
+
+    int64_t theme_id = service::CustomizationService::Instance().CreateTheme(
+        request->access_token(), theme);
+
+    response->set_code(theme_id > 0 ? 200 : 400);
+    response->set_message(theme_id > 0 ? "Created" : "Failed");
+    if (theme_id > 0) {
+        response->set_theme_id(theme_id);
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserThemes(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::GetThemeListRequest* request,
+                                                 ::furbbs::GetThemeListResponse* response) {
+    int total = 0;
+    auto themes = service::CustomizationService::Instance().GetThemes(
+        request->only_public(),
+        request->user_id(),
+        request->page(),
+        request->page_size(),
+        total
+    );
+
+    for (const auto& t : themes) {
+        auto* theme = response->add_themes();
+        theme->set_id(t.id);
+        theme->set_name(t.name);
+        theme->set_creator_id(t.creator_id);
+        theme->set_creator_name(t.creator_name);
+        theme->set_primary_color(t.primary_color);
+        theme->set_secondary_color(t.secondary_color);
+        theme->set_accent_color(t.accent_color);
+        theme->set_bg_color(t.bg_color);
+        theme->set_card_bg_color(t.card_bg_color);
+        theme->set_text_color(t.text_color);
+        theme->set_is_public(t.is_public);
+        theme->set_use_count(t.use_count);
+        theme->set_created_at(t.created_at);
+    }
+    response->set_total(total);
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetGroupCustomSettings(::trpc::ServerContextPtr context,
+                                                         const ::furbbs::GetGroupCustomSettingsRequest* request,
+                                                         ::furbbs::GetGroupCustomSettingsResponse* response) {
+    auto settings = service::CustomizationService::Instance().GetGroupCustomSettings(
+        request->access_token(),
+        request->group_id()
+    );
+
+    auto* s = response->mutable_settings();
+    s->set_group_id(settings.group_id);
+    s->set_entry_message(settings.entry_message);
+    s->set_require_approval(settings.require_approval);
+    for (const auto& q : settings.approval_questions) {
+        s->add_approval_questions(q);
+    }
+    s->set_group_icon(settings.group_icon);
+    s->set_group_color(settings.group_color);
+    s->set_custom_rules(settings.custom_rules);
+    s->set_allow_image_posts(settings.allow_image_posts);
+    s->set_allow_link_posts(settings.allow_link_posts);
+    s->set_post_cooldown(settings.post_cooldown);
+    s->set_mod_can_delete(settings.mod_can_delete);
+    s->set_mod_can_ban(settings.mod_can_ban);
+    s->set_visible_members(settings.visible_members);
+
+    response->set_code(200);
+    response->set_message("Success");
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::UpdateGroupCustomSettings(::trpc::ServerContextPtr context,
+                                                            const ::furbbs::UpdateGroupCustomSettingsRequest* request,
+                                                            ::furbbs::UpdateGroupCustomSettingsResponse* response) {
+    furbbs::repository::GroupCustomSettingsEntity settings;
+    settings.group_id = request->settings().group_id();
+    settings.entry_message = request->settings().entry_message();
+    settings.require_approval = request->settings().require_approval();
+    for (int i = 0; i < request->settings().approval_questions_size(); i++) {
+        settings.approval_questions.push_back(request->settings().approval_questions(i));
+    }
+    settings.group_icon = request->settings().group_icon();
+    settings.group_color = request->settings().group_color();
+    settings.custom_rules = request->settings().custom_rules();
+    settings.allow_image_posts = request->settings().allow_image_posts();
+    settings.allow_link_posts = request->settings().allow_link_posts();
+    settings.post_cooldown = request->settings().post_cooldown();
+    settings.mod_can_delete = request->settings().mod_can_delete();
+    settings.mod_can_ban = request->settings().mod_can_ban();
+    settings.visible_members = request->settings().visible_members();
+
+    bool success = service::CustomizationService::Instance().UpdateGroupCustomSettings(
+        request->access_token(), settings);
+
+    response->set_code(success ? 200 : 403);
+    response->set_message(success ? "Updated" : "Permission denied");
     return ::trpc::kSuccStatus;
 }
 
