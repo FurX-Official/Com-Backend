@@ -1985,3 +1985,128 @@ const std::string MESSAGE_GET_UNREAD_COUNT = R"(
     SELECT COUNT(*) FROM private_messages
     WHERE receiver_id = $1 AND NOT is_read
 )";
+
+const std::string ADMIN_GET_USER_PERMISSIONS = R"(
+    SELECT r.permissions
+    FROM user_roles ur
+    JOIN roles r ON ur.role_id = r.id
+    WHERE ur.user_id = $1 AND r.is_active = TRUE
+    LIMIT 1
+)";
+
+const std::string ADMIN_GET_USER_ROLE = R"(
+    SELECT r.id, r.name, r.display_name, r.description, r.color,
+           r.permissions, r.level, r.is_default, r.created_at
+    FROM user_roles ur
+    JOIN roles r ON ur.role_id = r.id
+    WHERE ur.user_id = $1
+    LIMIT 1
+)";
+
+const std::string ADMIN_GET_ALL_ROLES = R"(
+    SELECT id, name, display_name, description, color,
+           permissions, level, is_default, created_at
+    FROM roles WHERE is_active = TRUE
+    ORDER BY level DESC
+)";
+
+const std::string ADMIN_CREATE_ROLE = R"(
+    INSERT INTO roles (name, display_name, description, color,
+                       permissions, level, is_default, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING id
+)";
+
+const std::string ADMIN_UPDATE_ROLE = R"(
+    UPDATE roles SET name = $1, display_name = $2, description = $3,
+                     color = $4, permissions = $5, level = $6, is_default = $7
+    WHERE id = $8
+)";
+
+const std::string ADMIN_DELETE_ROLE = R"(
+    UPDATE roles SET is_active = FALSE WHERE id = $1
+)";
+
+const std::string ADMIN_ASSIGN_ROLE = R"(
+    INSERT INTO user_roles (user_id, role_id, assigned_at)
+    VALUES ($1, $2, $3)
+    ON CONFLICT (user_id) DO UPDATE SET role_id = $2, assigned_at = $3
+)";
+
+const std::string ADMIN_INSERT_AUDIT_LOG = R"(
+    INSERT INTO audit_logs (operator_id, operator_name, action, resource_type,
+                            resource_id, ip_address, details, success, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+)";
+
+const std::string ADMIN_GET_AUDIT_LOGS = R"(
+    SELECT al.id, al.operator_id, al.operator_name, al.action,
+           al.resource_type, al.resource_id, al.ip_address,
+           al.details, al.success, al.created_at
+    FROM audit_logs al
+    WHERE ($1 = '' OR al.operator_id = $1)
+      AND ($2 = 0 OR al.created_at >= $2)
+      AND ($3 = 0 OR al.created_at <= $3)
+      AND ($4 = '' OR al.action = $4)
+    ORDER BY al.created_at DESC
+    LIMIT $5 OFFSET $6
+)";
+
+const std::string ADMIN_COUNT_AUDIT_LOGS = R"(
+    SELECT COUNT(*) FROM audit_logs al
+    WHERE ($1 = '' OR al.operator_id = $1)
+      AND ($2 = 0 OR al.created_at >= $2)
+      AND ($3 = 0 OR al.created_at <= $3)
+      AND ($4 = '' OR al.action = $4)
+)";
+
+const std::string ADMIN_CREATE_REPORT = R"(
+    INSERT INTO reports (reporter_id, type, target_type, target_id,
+                         reason, description, evidence, status, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8)
+    RETURNING id
+)";
+
+const std::string ADMIN_GET_REPORTS = R"(
+    SELECT r.id, r.reporter_id, u.username, r.type, r.target_type,
+           r.target_id, r.target_title, r.target_author_id, r.reason,
+           r.description, r.evidence, r.status, r.processor_id,
+           p.username, r.result, r.created_at, r.processed_at
+    FROM reports r
+    LEFT JOIN users u ON r.reporter_id = u.id
+    LEFT JOIN users p ON r.processor_id = p.id
+    WHERE ($1 = -1 OR r.status = $1)
+      AND ($2 = '' OR r.target_type = $2)
+    ORDER BY r.created_at DESC
+    LIMIT $3 OFFSET $4
+)";
+
+const std::string ADMIN_COUNT_REPORTS = R"(
+    SELECT COUNT(*) FROM reports r
+    WHERE ($1 = -1 OR r.status = $1)
+      AND ($2 = '' OR r.target_type = $2)
+)";
+
+const std::string ADMIN_PROCESS_REPORT = R"(
+    UPDATE reports SET status = $1, processor_id = $2,
+                       result = $3, processed_at = $4
+    WHERE id = $5 AND status = 0
+)";
+
+const std::string ADMIN_GET_ADMIN_USERS = R"(
+    SELECT ur.user_id, u.username, u.avatar, ur.role_id,
+           r.name, r.level, u.is_active, u.last_login_ip,
+           u.last_login_at, ur.assigned_at
+    FROM user_roles ur
+    JOIN users u ON ur.user_id = u.id
+    JOIN roles r ON ur.role_id = r.id
+    WHERE r.level >= 10
+    ORDER BY r.level DESC
+    LIMIT $1 OFFSET $2
+)";
+
+const std::string ADMIN_COUNT_ADMIN_USERS = R"(
+    SELECT COUNT(*) FROM user_roles ur
+    JOIN roles r ON ur.role_id = r.id
+    WHERE r.level >= 10
+)";
