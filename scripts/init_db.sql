@@ -2145,3 +2145,112 @@ CREATE INDEX idx_blocks_blocker ON user_blocks(blocker_id);
 CREATE INDEX idx_announcements_active ON system_announcements(is_active, priority DESC);
 CREATE INDEX idx_webhooks_user ON webhook_endpoints(user_id);
 CREATE INDEX idx_alerts_user ON security_alerts(user_id, is_resolved);
+
+CREATE TABLE IF NOT EXISTS content_reports (
+    id SERIAL PRIMARY KEY,
+    reporter_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    content_type VARCHAR(32) NOT NULL,
+    content_id BIGINT NOT NULL,
+    report_reason VARCHAR(64) NOT NULL,
+    report_details TEXT,
+    status VARCHAR(32) DEFAULT 'pending',
+    handled_by VARCHAR(128),
+    handled_at BIGINT,
+    handler_notes TEXT,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(reporter_id, content_type, content_id)
+);
+
+CREATE TABLE IF NOT EXISTS comment_replies (
+    id SERIAL PRIMARY KEY,
+    comment_id BIGINT REFERENCES comments(id) ON DELETE CASCADE,
+    parent_reply_id BIGINT REFERENCES comment_replies(id) ON DELETE CASCADE,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    reply_to_user_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    content TEXT NOT NULL,
+    like_count INT DEFAULT 0,
+    is_deleted BOOLEAN DEFAULT false,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS post_sticky (
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE PRIMARY KEY,
+    section_id BIGINT,
+    priority INT DEFAULT 0,
+    sticky_by VARCHAR(128),
+    sticky_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS post_digest (
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE PRIMARY KEY,
+    digest_level VARCHAR(32) DEFAULT 'bronze',
+    recommended_by VARCHAR(128),
+    description TEXT,
+    recommended_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS collection_folders (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(64) NOT NULL,
+    description TEXT,
+    is_public BOOLEAN DEFAULT false,
+    item_count INT DEFAULT 0,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS collection_items (
+    folder_id BIGINT REFERENCES collection_folders(id) ON DELETE CASCADE,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    saved_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (folder_id, post_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_tags (
+    tagger_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    tagged_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    tag VARCHAR(32) NOT NULL,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (tagger_id, tagged_id, tag)
+);
+
+CREATE TABLE IF NOT EXISTS keyword_filters (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    keyword VARCHAR(64) NOT NULL,
+    filter_type VARCHAR(32) DEFAULT 'post_title',
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    UNIQUE(user_id, keyword, filter_type)
+);
+
+CREATE TABLE IF NOT EXISTS post_drafts (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(128),
+    content TEXT,
+    section_id BIGINT,
+    tags VARCHAR(64)[],
+    fursona_id BIGINT,
+    is_auto_save BOOLEAN DEFAULT false,
+    updated_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+);
+
+CREATE TABLE IF NOT EXISTS post_share_stats (
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE PRIMARY KEY,
+    view_count INT DEFAULT 0,
+    share_count INT DEFAULT 0,
+    download_count INT DEFAULT 0,
+    last_viewed_at BIGINT
+);
+
+CREATE INDEX idx_reports_status ON content_reports(status, created_at DESC);
+CREATE INDEX idx_reports_content ON content_reports(content_type, content_id);
+CREATE INDEX idx_comment_replies ON comment_replies(comment_id, created_at);
+CREATE INDEX idx_sticky_section ON post_sticky(section_id, priority DESC);
+CREATE INDEX idx_digest_level ON post_digest(digest_level);
+CREATE INDEX idx_collection_user ON collection_folders(user_id);
+CREATE INDEX idx_tags_tagger ON user_tags(tagger_id);
+CREATE INDEX idx_filter_user ON keyword_filters(user_id);
+CREATE INDEX idx_drafts_user ON post_drafts(user_id, updated_at DESC);

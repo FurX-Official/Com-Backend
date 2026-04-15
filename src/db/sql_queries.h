@@ -1127,6 +1127,145 @@ const std::string ALERT_RESOLVE = R"(
     UPDATE security_alerts SET is_resolved = true WHERE id = $1 AND user_id = $2
 )";
 
+const std::string REPORT_CREATE = R"(
+    INSERT INTO content_reports (reporter_id, content_type, content_id,
+    report_reason, report_details, created_at)
+    VALUES ($1, $2, $3, $4, $5, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT DO NOTHING RETURNING id
+)";
+const std::string REPORT_GET_PENDING = R"(
+    SELECT * FROM content_reports WHERE status = 'pending'
+    ORDER BY created_at DESC LIMIT $1 OFFSET $2
+)";
+const std::string REPORT_HANDLE = R"(
+    UPDATE content_reports SET status = $1, handled_by = $2,
+    handled_at = EXTRACT(EPOCH FROM NOW()) * 1000, handler_notes = $3
+    WHERE id = $4
+)";
+
+const std::string REPLY_CREATE = R"(
+    INSERT INTO comment_replies (comment_id, parent_reply_id, post_id,
+    user_id, reply_to_user_id, content, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, EXTRACT(EPOCH FROM NOW()) * 1000)
+    RETURNING id
+)";
+const std::string REPLY_GET_BY_COMMENT = R"(
+    SELECT * FROM comment_replies WHERE comment_id = $1 AND is_deleted = false
+    ORDER BY created_at ASC LIMIT 50
+)";
+const std::string REPLY_DELETE = R"(
+    UPDATE comment_replies SET is_deleted = true WHERE id = $1 AND user_id = $2
+)";
+const std::string REPLY_LIKE = R"(
+    UPDATE comment_replies SET like_count = like_count + 1 WHERE id = $1
+)";
+
+const std::string STICKY_SET = R"(
+    INSERT INTO post_sticky (post_id, section_id, priority, sticky_by)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (post_id) DO UPDATE SET priority = $3
+)";
+const std::string STICKY_REMOVE = R"(
+    DELETE FROM post_sticky WHERE post_id = $1
+)";
+const std::string STICKY_GET_BY_SECTION = R"(
+    SELECT p.*, ps.priority FROM posts p
+    JOIN post_sticky ps ON p.id = ps.post_id
+    WHERE ps.section_id = $1 AND p.is_deleted = false
+    ORDER BY ps.priority DESC
+)";
+
+const std::string DIGEST_SET = R"(
+    INSERT INTO post_digest (post_id, digest_level, recommended_by, description)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (post_id) DO UPDATE SET digest_level = $2
+)";
+const std::string DIGEST_REMOVE = R"(
+    DELETE FROM post_digest WHERE post_id = $1
+)";
+const std::string DIGEST_GET_BY_LEVEL = R"(
+    SELECT p.*, pd.digest_level FROM posts p
+    JOIN post_digest pd ON p.id = pd.post_id
+    WHERE pd.digest_level = $1 AND p.is_deleted = false
+    ORDER BY pd.recommended_at DESC LIMIT $2 OFFSET $3
+)";
+
+const std::string FOLDER_CREATE = R"(
+    INSERT INTO collection_folders (user_id, name, description, is_public, created_at)
+    VALUES ($1, $2, $3, $4, EXTRACT(EPOCH FROM NOW()) * 1000)
+    RETURNING id
+)";
+const std::string FOLDER_GET_BY_USER = R"(
+    SELECT * FROM collection_folders WHERE user_id = $1 ORDER BY created_at DESC
+)";
+const std::string FOLDER_ADD_ITEM = R"(
+    INSERT INTO collection_items (folder_id, post_id, saved_at)
+    VALUES ($1, $2, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT DO NOTHING;
+    UPDATE collection_folders SET item_count = item_count + 1 WHERE id = $1
+)";
+const std::string FOLDER_REMOVE_ITEM = R"(
+    DELETE FROM collection_items WHERE folder_id = $1 AND post_id = $2;
+    UPDATE collection_folders SET item_count = item_count - 1 WHERE id = $1
+)";
+const std::string FOLDER_GET_ITEMS = R"(
+    SELECT p.* FROM posts p JOIN collection_items ci ON p.id = ci.post_id
+    WHERE ci.folder_id = $1 AND p.is_deleted = false
+    ORDER BY ci.saved_at DESC LIMIT $2 OFFSET $3
+)";
+
+const std::string USER_TAG_ADD = R"(
+    INSERT INTO user_tags (tagger_id, tagged_id, tag, created_at)
+    VALUES ($1, $2, $3, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT DO NOTHING
+)";
+const std::string USER_TAG_REMOVE = R"(
+    DELETE FROM user_tags WHERE tagger_id = $1 AND tagged_id = $2 AND tag = $3
+)";
+const std::string USER_TAG_GET = R"(
+    SELECT tag FROM user_tags WHERE tagger_id = $1 AND tagged_id = $2
+)";
+
+const std::string KEYWORD_FILTER_ADD = R"(
+    INSERT INTO keyword_filters (user_id, keyword, filter_type, created_at)
+    VALUES ($1, $2, $3, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT DO NOTHING
+)";
+const std::string KEYWORD_FILTER_REMOVE = R"(
+    DELETE FROM keyword_filters WHERE user_id = $1 AND id = $2
+)";
+const std::string KEYWORD_FILTER_GET = R"(
+    SELECT keyword, filter_type FROM keyword_filters WHERE user_id = $1
+)";
+
+const std::string DRAFT_SAVE = R"(
+    INSERT INTO post_drafts (user_id, title, content, section_id,
+    tags, fursona_id, is_auto_save, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, EXTRACT(EPOCH FROM NOW()) * 1000)
+)";
+const std::string DRAFT_GET_BY_USER = R"(
+    SELECT * FROM post_drafts WHERE user_id = $1 ORDER BY updated_at DESC LIMIT 20
+)";
+const std::string DRAFT_DELETE = R"(
+    DELETE FROM post_drafts WHERE id = $1 AND user_id = $2
+)";
+
+const std::string STATS_INC_VIEW = R"(
+    INSERT INTO post_share_stats (post_id, view_count, last_viewed_at)
+    VALUES ($1, 1, EXTRACT(EPOCH FROM NOW()) * 1000)
+    ON CONFLICT (post_id) DO UPDATE SET
+    view_count = post_share_stats.view_count + 1,
+    last_viewed_at = EXTRACT(EPOCH FROM NOW()) * 1000
+)";
+const std::string STATS_INC_SHARE = R"(
+    INSERT INTO post_share_stats (post_id, share_count) VALUES ($1, 1)
+    ON CONFLICT (post_id) DO UPDATE SET
+    share_count = post_share_stats.share_count + 1
+)";
+const std::string STATS_GET = R"(
+    SELECT * FROM post_share_stats WHERE post_id = $1
+)";
+
 } // namespace furbbs::db::sql
 
 #endif // FURBBS_DB_SQL_QUERIES_H

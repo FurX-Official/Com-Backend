@@ -55,6 +55,7 @@ file(GLOB_RECURSE SRC_FILES
     "${PROJECT_SOURCE_DIR}/src/controller/community_controller.cc"
     "${PROJECT_SOURCE_DIR}/src/controller/core_controller.cc"
     "${PROJECT_SOURCE_DIR}/src/controller/security_controller.cc"
+    "${PROJECT_SOURCE_DIR}/src/controller/community_enhanced_controller.cc"
     "${PROJECT_SOURCE_DIR}/src/repository/furry_core_repository.cc"
     "${PROJECT_SOURCE_DIR}/src/repository/furry_core_repository.h"
     "${PROJECT_SOURCE_DIR}/src/repository/community_repository.cc"
@@ -63,10 +64,13 @@ file(GLOB_RECURSE SRC_FILES
     "${PROJECT_SOURCE_DIR}/src/repository/core_repository.h"
     "${PROJECT_SOURCE_DIR}/src/repository/security_repository.cc"
     "${PROJECT_SOURCE_DIR}/src/repository/security_repository.h"
+    "${PROJECT_SOURCE_DIR}/src/repository/community_enhanced_repository.cc"
+    "${PROJECT_SOURCE_DIR}/src/repository/community_enhanced_repository.h"
     "${PROJECT_SOURCE_DIR}/src/service_impl/furry_core_service.h"
     "${PROJECT_SOURCE_DIR}/src/service_impl/community_service.h"
     "${PROJECT_SOURCE_DIR}/src/service_impl/core_service.h"
     "${PROJECT_SOURCE_DIR}/src/service_impl/security_service.h"
+    "${PROJECT_SOURCE_DIR}/src/service_impl/community_enhanced_service.h"
 )
 
 file(GLOB_RECURSE PROTO_FILES

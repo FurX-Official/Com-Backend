@@ -547,4 +547,124 @@ namespace furbbs::service {
     return ::furbbs::controller::GetUserWebhooks(context, request, response);
 }
 
+::trpc::Status FurBBSServiceImpl::CreateContentReport(::trpc::ServerContextPtr context,
+                                                       const ::furbbs::CreateContentReportRequest* request,
+                                                       ::furbbs::CreateContentReportResponse* response) {
+    return ::furbbs::controller::CreateContentReport(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetPendingReports(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::GetPendingReportsRequest* request,
+                                                      ::furbbs::GetPendingReportsResponse* response) {
+    return ::furbbs::controller::GetPendingReports(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::HandleReport(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::HandleReportRequest* request,
+                                                 ::furbbs::HandleReportResponse* response) {
+    return ::furbbs::controller::HandleReport(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::CreateCommentReply(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::CreateCommentReplyRequest* request,
+                                                      ::furbbs::CreateCommentReplyResponse* response) {
+    return ::furbbs::controller::CreateCommentReply(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetCommentReplies(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::GetCommentRepliesRequest* request,
+                                                     ::furbbs::GetCommentRepliesResponse* response) {
+    return ::furbbs::controller::GetCommentReplies(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::DeleteCommentReply(::trpc::ServerContextPtr context,
+                                                       const ::furbbs::DeleteCommentReplyRequest* request,
+                                                       ::furbbs::DeleteCommentReplyResponse* response) {
+    return ::furbbs::controller::DeleteCommentReply(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::SetPostSticky(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::SetPostStickyRequest* request,
+                                                  ::furbbs::SetPostStickyResponse* response) {
+    return ::furbbs::controller::SetPostSticky(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::RemovePostSticky(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::RemovePostStickyRequest* request,
+                                                     ::furbbs::RemovePostStickyResponse* response) {
+    return ::furbbs::controller::RemovePostSticky(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::SetPostDigest(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::SetPostDigestRequest* request,
+                                                  ::furbbs::SetPostDigestResponse* response) {
+    return ::furbbs::controller::SetPostDigest(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::CreateCollectionFolder(::trpc::ServerContextPtr context,
+                                                          const ::furbbs::CreateCollectionFolderRequest* request,
+                                                          ::furbbs::CreateCollectionFolderResponse* response) {
+    return ::furbbs::controller::CreateCollectionFolder(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserFolders(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetUserFoldersRequest* request,
+                                                   ::furbbs::GetUserFoldersResponse* response) {
+    return ::furbbs::controller::GetUserFolders(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::AddToCollectionFolder(::trpc::ServerContextPtr context,
+                                                         const ::furbbs::AddToCollectionFolderRequest* request,
+                                                         ::furbbs::AddToCollectionFolderResponse* response) {
+    return ::furbbs::controller::AddToCollectionFolder(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::AddUserTag(::trpc::ServerContextPtr context,
+                                              const ::furbbs::AddUserTagRequest* request,
+                                              ::furbbs::AddUserTagResponse* response) {
+    return ::furbbs::controller::AddUserTag(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::RemoveUserTag(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::RemoveUserTagRequest* request,
+                                                 ::furbbs::RemoveUserTagResponse* response) {
+    return ::furbbs::controller::RemoveUserTag(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::AddKeywordFilter(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::AddKeywordFilterRequest* request,
+                                                    ::furbbs::AddKeywordFilterResponse* response) {
+    return ::furbbs::controller::AddKeywordFilter(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetKeywordFilters(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::GetKeywordFiltersRequest* request,
+                                                     ::furbbs::GetKeywordFiltersResponse* response) {
+    return ::furbbs::controller::GetKeywordFilters(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::SavePostDraft(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::SavePostDraftRequest* request,
+                                                 ::furbbs::SavePostDraftResponse* response) {
+    return ::furbbs::controller::SavePostDraft(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserDrafts(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::GetUserDraftsRequest* request,
+                                                  ::furbbs::GetUserDraftsResponse* response) {
+    return ::furbbs::controller::GetUserDrafts(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::RecordPostView(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::RecordPostViewRequest* request,
+                                                   ::furbbs::RecordPostViewResponse* response) {
+    return ::furbbs::controller::RecordPostView(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::RecordPostShare(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::RecordPostShareRequest* request,
+                                                    ::furbbs::RecordPostShareResponse* response) {
+    return ::furbbs::controller::RecordPostShare(context, request, response);
+}
+
 } // namespace furbbs::service
