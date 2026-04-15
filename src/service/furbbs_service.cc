@@ -6200,4 +6200,221 @@ static const int64_t SERVER_START_TIME = std::chrono::duration_cast<std::chrono:
     return ::trpc::kSuccStatus;
 }
 
+::trpc::Status FurBBSServiceImpl::GetMembershipPlans(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::GetSystemMetricsResponse* request,
+                                                 ::furbbs::GetMembershipPlansResponse* response) {
+    try {
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec(R"(
+                SELECT id, name, tier, price_monthly, price_yearly, 
+                       benefits, description, discount_percent, is_popular
+                FROM membership_plans
+                WHERE is_active = TRUE
+                ORDER BY tier ASC
+            )");
+
+            for (const auto& row : result) {
+                auto* plan = response->add_plans();
+                plan->set_id(row[0].as<int32_t>());
+                plan->set_name(row[1].as<std::string>());
+                plan->set_tier(static_cast<::furbbs::MembershipTier>(row[2].as<int>()));
+                plan->set_price_monthly(row[3].as<int32_t>());
+                plan->set_price_yearly(row[4].as<int32_t>());
+                
+                if (!row[5].is_null()) {
+                    pqxx::array_parser<std::vector<std::string>> parser(row[5]);
+                    std::vector<std::string> benefits;
+                    parser.get(benefits);
+                    for (const auto& b : benefits) {
+                        plan->add_benefits(b);
+                    }
+                }
+                
+                if (!row[6].is_null()) plan->set_description(row[6].as<std::string>());
+                plan->set_discount_percent(row[7].as<int32_t>());
+                plan->set_is_popular(row[8].as<bool>());
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserMembership(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::GetUserMembershipRequest* request,
+                                                  ::furbbs::GetUserMembershipResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec_params(R"(
+                SELECT tier, start_date, expiry_date, auto_renew
+                FROM user_memberships WHERE user_id = $1
+            )", user_opt->id);
+            
+            auto* membership = response->mutable_membership();
+            membership->set_user_id(user_opt->id);
+            
+            if (!result.empty()) {
+                membership->set_current_tier(static_cast<::furbbs::MembershipTier>(result[0][0].as<int>()));
+                if (!result[0][1].is_null()) membership->set_start_date(result[0][1].as<int64_t>());
+                if (!result[0][2].is_null()) membership->set_expiry_date(result[0][2].as<int64_t>());
+                membership->set_auto_renew(result[0][3].as<bool>());
+            } else {
+                membership->set_current_tier(::furbbs::MEMBERSHIP_FREE);
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::SubscribeMembership(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::SubscribeMembershipRequest* request,
+                                                   ::furbbs::SubscribeMembershipResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        auto now = std::chrono::system_clock::now();
+        auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now.time_since_epoch()).count();
+
+        int order_id = 0;
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto plan_result = txn.exec_params(R"(
+                SELECT price_monthly, price_yearly FROM membership_plans WHERE id = $1
+            )", request->plan_id());
+            
+            if (plan_result.empty()) {
+                throw std::runtime_error("Invalid plan");
+            }
+            
+            int price = request->yearly() ? 
+                plan_result[0][1].as<int>() : plan_result[0][0].as<int>();
+
+            auto result = txn.exec_params(R"(
+                INSERT INTO membership_orders (user_id, plan_id, amount, payment_method)
+                VALUES ($1, $2, $3, $4)
+                RETURNING id
+            )", user_opt->id, request->plan_id(), price, request->payment_method());
+            
+            order_id = result[0][0].as<int>();
+        });
+
+        response->set_order_id(std::to_string(order_id));
+        response->set_payment_url("/api/payment/" + std::to_string(order_id));
+        response->set_code(200);
+        response->set_message("Order created successfully");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetAchievements(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::GetSystemMetricsResponse* request,
+                                                 ::furbbs::GetAchievementsResponse* response) {
+    try {
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec(R"(
+                SELECT id, name, description, icon, rarity, 
+                       points_reward, requirement_type, requirement_value
+                FROM achievements WHERE is_active = TRUE
+                ORDER BY rarity ASC, id ASC
+            )");
+
+            for (const auto& row : result) {
+                auto* achievement = response->add_achievements();
+                achievement->set_id(row[0].as<int32_t>());
+                achievement->set_name(row[1].as<std::string>());
+                achievement->set_description(row[2].as<std::string>());
+                if (!row[3].is_null()) achievement->set_icon(row[3].as<std::string>());
+                achievement->set_rarity(row[4].as<int32_t>());
+                achievement->set_points_reward(row[5].as<int32_t>());
+                achievement->set_requirement_type(row[6].as<std::string>());
+                achievement->set_requirement_value(row[7].as<int32_t>());
+            }
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserAchievements(::trpc::ServerContextPtr context,
+                                                       const ::furbbs::GetUserAchievementsRequest* request,
+                                                       ::furbbs::GetUserAchievementsResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        std::string target_user_id = request->user_id().empty() ? user_opt->id : request->user_id();
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec_params(R"(
+                SELECT a.id, a.name, a.description, a.icon, a.rarity, 
+                       a.requirement_value, ua.unlocked_at
+                FROM achievements a
+                LEFT JOIN user_achievements ua ON a.id = ua.achievement_id AND ua.user_id = $1
+                WHERE a.is_active = TRUE
+                ORDER BY a.rarity ASC
+            )", target_user_id);
+
+            int unlocked = 0;
+            for (const auto& row : result) {
+                auto* achievement = response->add_achievements();
+                achievement->set_achievement_id(row[0].as<int32_t>());
+                achievement->set_name(row[1].as<std::string>());
+                achievement->set_description(row[2].as<std::string>());
+                if (!row[3].is_null()) achievement->set_icon(row[3].as<std::string>());
+                achievement->set_rarity(row[4].as<int32_t>());
+                achievement->set_requirement(row[5].as<int32_t>());
+                
+                if (!row[6].is_null()) {
+                    achievement->set_unlocked_at(row[6].as<int64_t>());
+                    achievement->set_progress(row[5].as<int32_t>());
+                    unlocked++;
+                }
+            }
+            response->set_total_unlocked(unlocked);
+        });
+
+        response->set_code(200);
+        response->set_message("Success");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
 } // namespace furbbs::service

@@ -529,6 +529,26 @@ public:
     ::trpc::Status GetModerationLog(::trpc::ServerContextPtr context,
                                     const ::furbbs::GetModerationLogRequest* request,
                                     ::furbbs::GetModerationLogResponse* response) override;
+
+    ::trpc::Status GetMembershipPlans(::trpc::ServerContextPtr context,
+                                      const ::furbbs::GetSystemMetricsResponse* request,
+                                      ::furbbs::GetMembershipPlansResponse* response) override;
+
+    ::trpc::Status GetUserMembership(::trpc::ServerContextPtr context,
+                                     const ::furbbs::GetUserMembershipRequest* request,
+                                     ::furbbs::GetUserMembershipResponse* response) override;
+
+    ::trpc::Status SubscribeMembership(::trpc::ServerContextPtr context,
+                                       const ::furbbs::SubscribeMembershipRequest* request,
+                                       ::furbbs::SubscribeMembershipResponse* response) override;
+
+    ::trpc::Status GetAchievements(::trpc::ServerContextPtr context,
+                                   const ::furbbs::GetSystemMetricsResponse* request,
+                                   ::furbbs::GetAchievementsResponse* response) override;
+
+    ::trpc::Status GetUserAchievements(::trpc::ServerContextPtr context,
+                                       const ::furbbs::GetUserAchievementsRequest* request,
+                                       ::furbbs::GetUserAchievementsResponse* response) override;
 };
 
 } // namespace furbbs::service

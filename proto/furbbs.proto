@@ -660,6 +660,13 @@ service FurBBSService {
     rpc HandleReport(HandleReportRequest) returns (HandleReportResponse);
     
     rpc GetModerationLog(GetModerationLogRequest) returns (GetModerationLogResponse);
+    
+    rpc GetMembershipPlans(GetSystemMetricsResponse) returns (GetMembershipPlansResponse);
+    rpc GetUserMembership(GetUserMembershipRequest) returns (GetUserMembershipResponse);
+    rpc SubscribeMembership(SubscribeMembershipRequest) returns (SubscribeMembershipResponse);
+    
+    rpc GetAchievements(GetSystemMetricsResponse) returns (GetAchievementsResponse);
+    rpc GetUserAchievements(GetUserAchievementsRequest) returns (GetUserAchievementsResponse);
 }
 
 message HealthCheckRequest {}
@@ -2520,4 +2527,103 @@ message GetModerationLogResponse {
     string message = 2;
     repeated ModerationAction actions = 3;
     int32 total = 4;
+}
+
+enum MembershipTier {
+    MEMBERSHIP_FREE = 0;
+    MEMBERSHIP_BRONZE = 1;
+    MEMBERSHIP_SILVER = 2;
+    MEMBERSHIP_GOLD = 3;
+    MEMBERSHIP_PLATINUM = 4;
+}
+
+message MembershipPlan {
+    int32 id = 1;
+    string name = 2;
+    MembershipTier tier = 3;
+    int32 price_monthly = 4;
+    int32 price_yearly = 5;
+    repeated string benefits = 6;
+    string description = 7;
+    int32 discount_percent = 8;
+    bool is_popular = 9;
+}
+
+message UserMembership {
+    string user_id = 1;
+    MembershipTier current_tier = 2;
+    int64 start_date = 3;
+    int64 expiry_date = 4;
+    bool auto_renew = 5;
+    int32 total_days = 6;
+}
+
+message GetMembershipPlansResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated MembershipPlan plans = 3;
+}
+
+message GetUserMembershipRequest {
+    string access_token = 1;
+}
+
+message GetUserMembershipResponse {
+    int32 code = 1;
+    string message = 2;
+    UserMembership membership = 3;
+}
+
+message SubscribeMembershipRequest {
+    string access_token = 1;
+    int32 plan_id = 2;
+    bool yearly = 3;
+    string payment_method = 4;
+}
+
+message SubscribeMembershipResponse {
+    int32 code = 1;
+    string message = 2;
+    string payment_url = 3;
+    string order_id = 4;
+}
+
+message Achievement {
+    int32 id = 1;
+    string name = 2;
+    string description = 3;
+    string icon = 4;
+    int32 rarity = 5;
+    int32 points_reward = 6;
+    string requirement_type = 7;
+    int32 requirement_value = 8;
+}
+
+message UserAchievement {
+    int32 achievement_id = 1;
+    string name = 2;
+    string description = 3;
+    string icon = 4;
+    int32 rarity = 5;
+    int64 unlocked_at = 6;
+    int32 progress = 7;
+    int32 requirement = 8;
+}
+
+message GetAchievementsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Achievement achievements = 3;
+}
+
+message GetUserAchievementsRequest {
+    string access_token = 1;
+    string user_id = 2;
+}
+
+message GetUserAchievementsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated UserAchievement achievements = 3;
+    int32 total_unlocked = 4;
 }

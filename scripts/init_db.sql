@@ -1073,3 +1073,79 @@ CREATE TABLE IF NOT EXISTS moderation_actions (
 CREATE INDEX idx_mod_moderator ON moderation_actions(moderator_id);
 CREATE INDEX idx_mod_action ON moderation_actions(action_type);
 CREATE INDEX idx_mod_target ON moderation_actions(target_type, target_id);
+
+CREATE TABLE IF NOT EXISTS membership_plans (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(64) NOT NULL,
+    tier INT NOT NULL,
+    price_monthly INT NOT NULL,
+    price_yearly INT NOT NULL,
+    benefits TEXT[],
+    description TEXT,
+    discount_percent INT DEFAULT 0,
+    is_popular BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+INSERT INTO membership_plans (name, tier, price_monthly, price_yearly, benefits, description, discount_percent, is_popular) VALUES
+('免费会员', 0, 0, 0, ARRAY['基础发帖功能', '评论功能', '普通头像'], '免费用户基础功能', 0, FALSE),
+('青铜会员', 1, 990, 9980, ARRAY['青铜专属勋章', '每日积分+50%', '自定义头像框', '发帖免审核'], '解锁更多实用功能', 0, FALSE),
+('白银会员', 2, 1990, 19980, ARRAY['白银专属勋章', '每日积分+100%', '专属皮肤', '无广告', '超大空间'], '享受优质体验', 0, TRUE),
+('黄金会员', 3, 3990, 39980, ARRAY['黄金专属勋章', '每日积分+200%', '全皮肤解锁', '昵称高亮', '专属客服'], '尊贵黄金体验', 0, FALSE),
+('铂金会员', 4, 7990, 79980, ARRAY['铂金专属勋章', '每日积分+300%', '专属身份标识', '优先推荐', '所有功能解锁'], '至尊体验', 0, FALSE);
+
+CREATE TABLE IF NOT EXISTS user_memberships (
+    user_id VARCHAR(128) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    tier INT DEFAULT 0,
+    start_date BIGINT,
+    expiry_date BIGINT,
+    auto_renew BOOLEAN DEFAULT FALSE,
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    updated_at BIGINT
+);
+
+CREATE TABLE IF NOT EXISTS membership_orders (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE SET NULL,
+    plan_id INT REFERENCES membership_plans(id),
+    amount INT NOT NULL,
+    payment_method VARCHAR(32),
+    status INT DEFAULT 0,
+    transaction_id VARCHAR(256),
+    created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    paid_at BIGINT
+);
+
+CREATE INDEX idx_membership_user ON user_memberships(user_id);
+CREATE INDEX idx_order_user ON membership_orders(user_id);
+
+CREATE TABLE IF NOT EXISTS achievements (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(128) NOT NULL,
+    description VARCHAR(512) NOT NULL,
+    icon VARCHAR(512),
+    rarity INT DEFAULT 1,
+    points_reward INT DEFAULT 0,
+    requirement_type VARCHAR(64) NOT NULL,
+    requirement_value INT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+INSERT INTO achievements (name, description, icon, rarity, points_reward, requirement_type, requirement_value) VALUES
+('初出茅庐', '发布第一篇帖子', 'achievement_first_post.png', 1, 50, 'posts', 1),
+('活跃用户', '发布10篇帖子', 'achievement_active.png', 2, 200, 'posts', 10),
+('社区达人', '发布100篇帖子', 'achievement_expert.png', 3, 1000, 'posts', 100),
+('善于交流', '发表100条评论', 'achievement_chatty.png', 2, 200, 'comments', 100),
+('万人迷', '获得1000个赞', 'achievement_popular.png', 4, 2000, 'likes_received', 1000),
+('签到达人', '连续签到30天', 'achievement_checkin.png', 3, 500, 'consecutive_checkin', 30),
+('元老', '注册满1年', 'achievement_veteran.png', 4, 1000, 'days_registered', 365),
+('乐于助人', '获得100次最佳答案', 'achievement_helpful.png', 3, 500, 'best_answer', 100);
+
+CREATE TABLE IF NOT EXISTS user_achievements (
+    user_id VARCHAR(128) REFERENCES users(id) ON DELETE CASCADE,
+    achievement_id INT REFERENCES achievements(id),
+    unlocked_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    PRIMARY KEY (user_id, achievement_id)
+);
+
+CREATE INDEX idx_user_achievement ON user_achievements(user_id, achievement_id);
