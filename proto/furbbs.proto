@@ -2,6 +2,34 @@ syntax = "proto3";
 
 package furbbs;
 
+enum ContentRating {
+    RATING_SAFE = 0;
+    RATING_MATURE = 1;
+    RATING_EXPLICIT = 2;
+}
+
+enum CommissionStatus {
+    COMMISSION_OPEN = 0;
+    COMMISSION_CLOSED = 1;
+    COMMISSION_ONLY_FRIENDS = 2;
+}
+
+enum OrderStatus {
+    ORDER_PENDING = 0;
+    ORDER_ACCEPTED = 1;
+    ORDER_IN_PROGRESS = 2;
+    ORDER_FINISHED = 3;
+    ORDER_CANCELLED = 4;
+}
+
+enum EventStatus {
+    EVENT_PLANNING = 0;
+    EVENT_CONFIRMED = 1;
+    EVENT_ONGOING = 2;
+    EVENT_ENDED = 3;
+    EVENT_CANCELLED = 4;
+}
+
 message UserInfo {
     string id = 1;
     string name = 2;
@@ -11,7 +39,33 @@ message UserInfo {
     string bio = 6;
     int32 follower_count = 7;
     int32 following_count = 8;
-    int64 created_at = 8;
+    int64 created_at = 9;
+    repeated Badge badges = 10;
+    CommissionStatus commission_status = 11;
+    ContentRating max_allowed_rating = 12;
+}
+
+message Fursona {
+    int64 id = 1;
+    string user_id = 2;
+    UserInfo user = 3;
+    string name = 4;
+    string species = 5;
+    string gender = 6;
+    string pronouns = 7;
+    string description = 8;
+    string reference_image = 9;
+    repeated string colors = 10;
+    bool is_main = 11;
+    int64 created_at = 12;
+}
+
+message Badge {
+    int64 id = 1;
+    string name = 2;
+    string icon = 3;
+    string description = 4;
+    int64 created_at = 5;
 }
 
 message Category {
@@ -47,6 +101,8 @@ message Post {
     int64 created_at = 14;
     int64 updated_at = 15;
     repeated string images = 16;
+    ContentRating rating = 17;
+    bool requires_verification = 18;
 }
 
 message Comment {
@@ -72,6 +128,220 @@ message GalleryItem {
     int32 like_count = 8;
     int32 view_count = 9;
     int64 created_at = 10;
+    ContentRating rating = 11;
+}
+
+message CommissionType {
+    int64 id = 1;
+    string user_id = 2;
+    UserInfo user = 3;
+    string name = 4;
+    string description = 5;
+    double base_price = 6;
+    string currency = 7;
+    int32 delivery_days = 8;
+    repeated string examples = 9;
+    bool is_active = 10;
+}
+
+message CommissionOrder {
+    int64 id = 1;
+    int64 commission_type_id = 2;
+    CommissionType commission_type = 3;
+    string buyer_id = 4;
+    UserInfo buyer = 5;
+    string seller_id = 6;
+    UserInfo seller = 7;
+    string requirements = 8;
+    string reference_url = 9;
+    double price = 10;
+    OrderStatus status = 11;
+    repeated string progress_updates = 12;
+    int64 created_at = 13;
+    int64 updated_at = 14;
+}
+
+message Event {
+    int64 id = 1;
+    string title = 2;
+    string description = 3;
+    string location = 4;
+    string organizer_id = 5;
+    UserInfo organizer = 6;
+    int64 start_time = 7;
+    int64 end_time = 8;
+    int32 max_attendees = 9;
+    int32 attendee_count = 10;
+    EventStatus status = 11;
+    repeated string images = 12;
+    int64 created_at = 13;
+}
+
+message Message {
+    int64 id = 1;
+    string sender_id = 2;
+    UserInfo sender = 3;
+    string receiver_id = 4;
+    UserInfo receiver = 5;
+    string content = 6;
+    bool is_read = 7;
+    int64 created_at = 8;
+}
+
+message CreateFursonaRequest {
+    string name = 1;
+    string species = 2;
+    string gender = 3;
+    string pronouns = 4;
+    string description = 5;
+    string reference_image = 6;
+    repeated string colors = 7;
+    bool is_main = 8;
+    string access_token = 9;
+}
+
+message CreateFursonaResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 fursona_id = 3;
+}
+
+message GetUserFursonasRequest {
+    string user_id = 1;
+}
+
+message GetUserFursonasResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Fursona fursonas = 3;
+}
+
+message CreateCommissionTypeRequest {
+    string name = 1;
+    string description = 2;
+    double base_price = 3;
+    string currency = 4;
+    int32 delivery_days = 5;
+    repeated string examples = 6;
+    string access_token = 7;
+}
+
+message CreateCommissionTypeResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 commission_type_id = 3;
+}
+
+message GetUserCommissionsRequest {
+    string user_id = 1;
+}
+
+message GetUserCommissionsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated CommissionType commissions = 3;
+}
+
+message CreateOrderRequest {
+    int64 commission_type_id = 1;
+    string requirements = 2;
+    string reference_url = 3;
+    string access_token = 4;
+}
+
+message CreateOrderResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 order_id = 3;
+}
+
+message GetMyOrdersRequest {
+    string access_token = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message GetMyOrdersResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated CommissionOrder orders = 3;
+    int32 total = 4;
+}
+
+message UpdateCommissionStatusRequest {
+    CommissionStatus status = 1;
+    string access_token = 2;
+}
+
+message UpdateCommissionStatusResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message CreateEventRequest {
+    string title = 1;
+    string description = 2;
+    string location = 3;
+    int64 start_time = 4;
+    int64 end_time = 5;
+    int32 max_attendees = 6;
+    repeated string images = 7;
+    string access_token = 8;
+}
+
+message CreateEventResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 event_id = 3;
+}
+
+message ListEventsRequest {
+    int32 page = 1;
+    int32 page_size = 2;
+    EventStatus status = 3;
+}
+
+message ListEventsResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Event events = 3;
+    int32 total = 4;
+}
+
+message JoinEventRequest {
+    int64 event_id = 1;
+    string access_token = 2;
+}
+
+message JoinEventResponse {
+    int32 code = 1;
+    string message = 2;
+}
+
+message SendMessageRequest {
+    string receiver_id = 1;
+    string content = 2;
+    string access_token = 3;
+}
+
+message SendMessageResponse {
+    int32 code = 1;
+    string message = 2;
+    int64 message_id = 3;
+}
+
+message GetMessagesRequest {
+    string other_user_id = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+    string access_token = 4;
+}
+
+message GetMessagesResponse {
+    int32 code = 1;
+    string message = 2;
+    repeated Message messages = 3;
+    int32 total = 4;
 }
 
 message GetUserRequest {
@@ -91,6 +361,7 @@ message CreatePostRequest {
     repeated int64 tag_ids = 4;
     repeated string images = 5;
     string access_token = 6;
+    ContentRating rating = 7;
 }
 
 message CreatePostResponse {
@@ -115,6 +386,7 @@ message ListPostsRequest {
     int32 page_size = 3;
     string sort_by = 4;
     string keyword = 5;
+    ContentRating max_rating = 6;
 }
 
 message ListPostsResponse {
@@ -174,6 +446,7 @@ message UploadGalleryRequest {
     string image_url = 3;
     repeated int64 tag_ids = 4;
     string access_token = 5;
+    ContentRating rating = 6;
 }
 
 message UploadGalleryResponse {
@@ -186,6 +459,7 @@ message ListGalleryRequest {
     int32 page = 1;
     int32 page_size = 2;
     int64 tag_id = 3;
+    ContentRating max_rating = 4;
 }
 
 message ListGalleryResponse {
@@ -217,4 +491,20 @@ service FurBBSService {
     rpc UploadGallery(UploadGalleryRequest) returns (UploadGalleryResponse);
     rpc ListGallery(ListGalleryRequest) returns (ListGalleryResponse);
     rpc FollowUser(FollowUserRequest) returns (FollowUserResponse);
+    
+    rpc CreateFursona(CreateFursonaRequest) returns (CreateFursonaResponse);
+    rpc GetUserFursonas(GetUserFursonasRequest) returns (GetUserFursonasResponse);
+    
+    rpc CreateCommissionType(CreateCommissionTypeRequest) returns (CreateCommissionTypeResponse);
+    rpc GetUserCommissions(GetUserCommissionsRequest) returns (GetUserCommissionsResponse);
+    rpc UpdateCommissionStatus(UpdateCommissionStatusRequest) returns (UpdateCommissionStatusResponse);
+    rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+    rpc GetMyOrders(GetMyOrdersRequest) returns (GetMyOrdersResponse);
+    
+    rpc CreateEvent(CreateEventRequest) returns (CreateEventResponse);
+    rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+    rpc JoinEvent(JoinEventRequest) returns (JoinEventResponse);
+    
+    rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+    rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
 }

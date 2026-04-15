@@ -525,4 +525,550 @@ namespace furbbs::service {
     return ::trpc::kSuccStatus;
 }
 
+::trpc::Status FurBBSServiceImpl::CreateFursona(::trpc::ServerContextPtr context,
+                                               const ::furbbs::CreateFursonaRequest* request,
+                                               ::furbbs::CreateFursonaResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        int64_t fursona_id = db::Database::Instance().Execute([&](pqxx::work& txn) {
+            if (request->is_main()) {
+                txn.exec_params(R"(
+                    UPDATE fursonas SET is_main = FALSE WHERE user_id = $1
+                )", user_opt->id);
+            }
+
+            pqxx::array<std::string> colors_array(request->colors().begin(), request->colors().end());
+            auto result = txn.exec_params(R"(
+                INSERT INTO fursonas (user_id, name, species, gender, pronouns, description, 
+                                     reference_image, colors, is_main)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                RETURNING id
+            )", user_opt->id, request->name(), request->species(), request->gender(),
+                request->pronouns(), request->description(), request->reference_image(),
+                colors_array, request->is_main());
+
+            return result[0][0].as<int64_t>();
+        });
+
+        response->set_code(200);
+        response->set_message("Fursona created successfully");
+        response->set_fursona_id(fursona_id);
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserFursonas(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::GetUserFursonasRequest* request,
+                                                  ::furbbs::GetUserFursonasResponse* response) {
+    try {
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec_params(R"(
+                SELECT id, name, species, gender, pronouns, description,
+                       reference_image, colors, is_main, created_at
+                FROM fursonas
+                WHERE user_id = $1
+                ORDER BY is_main DESC, created_at DESC
+            )", request->user_id());
+
+            for (const auto& row : result) {
+                auto* fursona = response->add_fursonas();
+                fursona->set_id(row[0].as<int64_t>());
+                fursona->set_user_id(request->user_id());
+                fursona->set_name(row[1].as<std::string>());
+                fursona->set_species(row[2].as<std::string>());
+                fursona->set_gender(row[3].as<std::string>());
+                fursona->set_pronouns(row[4].as<std::string>());
+                fursona->set_description(row[5].as<std::string>());
+                fursona->set_reference_image(row[6].as<std::string>());
+                fursona->set_is_main(row[8].as<bool>());
+                fursona->set_created_at(row[9].as<int64_t>());
+
+                auto colors = row[7].as<pqxx::array<std::string>>();
+                for (const auto& color : colors) {
+                    fursona->add_colors(color);
+                }
+            }
+
+            response->set_code(200);
+            response->set_message("Success");
+        });
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::CreateCommissionType(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::CreateCommissionTypeRequest* request,
+                                                      ::furbbs::CreateCommissionTypeResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        int64_t commission_id = db::Database::Instance().Execute([&](pqxx::work& txn) {
+            pqxx::array<std::string> examples_array(request->examples().begin(), request->examples().end());
+            auto result = txn.exec_params(R"(
+                INSERT INTO commission_types (user_id, name, description, base_price, 
+                                              currency, delivery_days, examples)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                RETURNING id
+            )", user_opt->id, request->name(), request->description(), request->base_price(),
+                "USD", request->delivery_days(), examples_array);
+
+            txn.exec_params(R"(
+                UPDATE users SET commission_status = 'OPEN' WHERE id = $1
+            )", user_opt->id);
+
+            return result[0][0].as<int64_t>();
+        });
+
+        response->set_code(200);
+        response->set_message("Commission type created successfully");
+        response->set_commission_type_id(commission_id);
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserCommissions(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::GetUserCommissionsRequest* request,
+                                                     ::furbbs::GetUserCommissionsResponse* response) {
+    try {
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec_params(R"(
+                SELECT ct.id, ct.name, ct.description, ct.base_price, ct.currency,
+                       ct.delivery_days, ct.examples, ct.is_active,
+                       u.name, u.display_name, u.avatar
+                FROM commission_types ct
+                JOIN users u ON ct.user_id = u.id
+                WHERE ct.user_id = $1 AND ct.is_active = TRUE
+                ORDER BY ct.created_at DESC
+            )", request->user_id());
+
+            for (const auto& row : result) {
+                auto* comm = response->add_commissions();
+                comm->set_id(row[0].as<int64_t>());
+                comm->set_user_id(request->user_id());
+                comm->set_name(row[1].as<std::string>());
+                comm->set_description(row[2].as<std::string>());
+                comm->set_base_price(row[3].as<double>());
+                comm->set_currency(row[4].as<std::string>());
+                comm->set_delivery_days(row[5].as<int32_t>());
+                comm->set_is_active(row[7].as<bool>());
+
+                auto examples = row[6].as<pqxx::array<std::string>>();
+                for (const auto& ex : examples) {
+                    comm->add_examples(ex);
+                }
+
+                comm->mutable_user()->set_id(request->user_id());
+                comm->mutable_user()->set_name(row[8].as<std::string>());
+                comm->mutable_user()->set_display_name(row[9].as<std::string>());
+                comm->mutable_user()->set_avatar(row[10].as<std::string>());
+            }
+
+            response->set_code(200);
+            response->set_message("Success");
+        });
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::UpdateCommissionStatus(::trpc::ServerContextPtr context,
+                                                         const ::furbbs::UpdateCommissionStatusRequest* request,
+                                                         ::furbbs::UpdateCommissionStatusResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        std::string status_str = "CLOSED";
+        if (request->status() == ::furbbs::COMMISSION_OPEN) status_str = "OPEN";
+        else if (request->status() == ::furbbs::COMMISSION_ONLY_FRIENDS) status_str = "ONLY_FRIENDS";
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            txn.exec_params(R"(
+                UPDATE users SET commission_status = $1 WHERE id = $2
+            )", status_str, user_opt->id);
+        });
+
+        response->set_code(200);
+        response->set_message("Commission status updated");
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::CreateOrder(::trpc::ServerContextPtr context,
+                                              const ::furbbs::CreateOrderRequest* request,
+                                              ::furbbs::CreateOrderResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        int64_t order_id = db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto comm_result = txn.exec_params(R"(
+                SELECT user_id, base_price FROM commission_types WHERE id = $1 AND is_active = TRUE
+            )", request->commission_type_id());
+
+            if (comm_result.empty()) {
+                throw std::runtime_error("Commission type not found or inactive");
+            }
+
+            std::string seller_id = comm_result[0][0].as<std::string>();
+            double price = comm_result[0][1].as<double>();
+
+            if (seller_id == user_opt->id) {
+                throw std::runtime_error("Cannot order your own commission");
+            }
+
+            auto result = txn.exec_params(R"(
+                INSERT INTO commission_orders (commission_type_id, buyer_id, seller_id,
+                                               requirements, reference_url, price)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING id
+            )", request->commission_type_id(), user_opt->id, seller_id,
+                request->requirements(), request->reference_url(), price);
+
+            return result[0][0].as<int64_t>();
+        });
+
+        response->set_code(200);
+        response->set_message("Order created successfully");
+        response->set_order_id(order_id);
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetMyOrders(::trpc::ServerContextPtr context,
+                                              const ::furbbs::GetMyOrdersRequest* request,
+                                              ::furbbs::GetMyOrdersResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            int32_t offset = (request->page() - 1) * request->page_size();
+
+            auto count_result = txn.exec_params(R"(
+                SELECT COUNT(*) FROM commission_orders
+                WHERE buyer_id = $1 OR seller_id = $1
+            )", user_opt->id);
+            response->set_total(count_result[0][0].as<int32_t>());
+
+            auto result = txn.exec_params(R"(
+                SELECT o.id, o.commission_type_id, o.buyer_id, o.seller_id,
+                       o.requirements, o.price, o.status, o.created_at,
+                       ct.name,
+                       b.name, b.display_name, b.avatar,
+                       s.name, s.display_name, s.avatar
+                FROM commission_orders o
+                JOIN commission_types ct ON o.commission_type_id = ct.id
+                JOIN users b ON o.buyer_id = b.id
+                JOIN users s ON o.seller_id = s.id
+                WHERE o.buyer_id = $1 OR o.seller_id = $1
+                ORDER BY o.created_at DESC
+                LIMIT $2 OFFSET $3
+            )", user_opt->id, request->page_size(), offset);
+
+            for (const auto& row : result) {
+                auto* order = response->add_orders();
+                order->set_id(row[0].as<int64_t>());
+                order->set_commission_type_id(row[1].as<int64_t>());
+                order->set_price(row[5].as<double>());
+
+                std::string status = row[6].as<std::string>();
+                if (status == "PENDING") order->set_status(::furbbs::ORDER_PENDING);
+                else if (status == "ACCEPTED") order->set_status(::furbbs::ORDER_ACCEPTED);
+                else if (status == "IN_PROGRESS") order->set_status(::furbbs::ORDER_IN_PROGRESS);
+                else if (status == "FINISHED") order->set_status(::furbbs::ORDER_FINISHED);
+                else order->set_status(::furbbs::ORDER_CANCELLED);
+
+                order->set_created_at(row[7].as<int64_t>());
+                order->mutable_commission_type()->set_name(row[8].as<std::string>());
+
+                order->mutable_buyer()->set_id(row[2].as<std::string>());
+                order->mutable_buyer()->set_name(row[9].as<std::string>());
+                order->mutable_buyer()->set_display_name(row[10].as<std::string>());
+                order->mutable_buyer()->set_avatar(row[11].as<std::string>());
+
+                order->mutable_seller()->set_id(row[3].as<std::string>());
+                order->mutable_seller()->set_name(row[12].as<std::string>());
+                order->mutable_seller()->set_display_name(row[13].as<std::string>());
+                order->mutable_seller()->set_avatar(row[14].as<std::string>());
+            }
+
+            response->set_code(200);
+            response->set_message("Success");
+        });
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::CreateEvent(::trpc::ServerContextPtr context,
+                                              const ::furbbs::CreateEventRequest* request,
+                                              ::furbbs::CreateEventResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        int64_t event_id = db::Database::Instance().Execute([&](pqxx::work& txn) {
+            pqxx::array<std::string> images_array(request->images().begin(), request->images().end());
+            auto result = txn.exec_params(R"(
+                INSERT INTO events (title, description, location, organizer_id,
+                                   start_time, end_time, max_attendees, images)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING id
+            )", request->title(), request->description(), request->location(),
+                user_opt->id, request->start_time(), request->end_time(),
+                request->max_attendees(), images_array);
+
+            return result[0][0].as<int64_t>();
+        });
+
+        response->set_code(200);
+        response->set_message("Event created successfully");
+        response->set_event_id(event_id);
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::ListEvents(::trpc::ServerContextPtr context,
+                                             const ::furbbs::ListEventsRequest* request,
+                                             ::furbbs::ListEventsResponse* response) {
+    try {
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            int32_t offset = (request->page() - 1) * request->page_size();
+            std::string status_filter = "";
+
+            auto count_result = txn.exec(R"(
+                SELECT COUNT(*) FROM events
+            )");
+            response->set_total(count_result[0][0].as<int32_t>());
+
+            auto result = txn.exec(R"(
+                SELECT e.id, e.title, e.description, e.location, e.organizer_id,
+                       e.start_time, e.end_time, e.max_attendees, e.attendee_count,
+                       e.status, e.images, e.created_at,
+                       u.name, u.display_name, u.avatar
+                FROM events e
+                JOIN users u ON e.organizer_id = u.id
+                ORDER BY e.start_time ASC
+                LIMIT )" + std::to_string(request->page_size()) + R"( OFFSET )" + std::to_string(offset)
+            );
+
+            for (const auto& row : result) {
+                auto* event = response->add_events();
+                event->set_id(row[0].as<int64_t>());
+                event->set_title(row[1].as<std::string>());
+                event->set_description(row[2].as<std::string>());
+                event->set_location(row[3].as<std::string>());
+                event->set_start_time(row[5].as<int64_t>());
+                event->set_end_time(row[6].as<int64_t>());
+                event->set_max_attendees(row[7].as<int32_t>());
+                event->set_attendee_count(row[8].as<int32_t>());
+
+                std::string status = row[9].as<std::string>();
+                if (status == "PLANNING") event->set_status(::furbbs::EVENT_PLANNING);
+                else if (status == "CONFIRMED") event->set_status(::furbbs::EVENT_CONFIRMED);
+                else if (status == "ONGOING") event->set_status(::furbbs::EVENT_ONGOING);
+                else if (status == "ENDED") event->set_status(::furbbs::EVENT_ENDED);
+                else event->set_status(::furbbs::EVENT_CANCELLED);
+
+                event->set_created_at(row[11].as<int64_t>());
+
+                auto images = row[10].as<pqxx::array<std::string>>();
+                for (const auto& img : images) {
+                    event->add_images(img);
+                }
+
+                event->mutable_organizer()->set_id(row[4].as<std::string>());
+                event->mutable_organizer()->set_name(row[12].as<std::string>());
+                event->mutable_organizer()->set_display_name(row[13].as<std::string>());
+                event->mutable_organizer()->set_avatar(row[14].as<std::string>());
+            }
+
+            response->set_code(200);
+            response->set_message("Success");
+        });
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::JoinEvent(::trpc::ServerContextPtr context,
+                                            const ::furbbs::JoinEventRequest* request,
+                                            ::furbbs::JoinEventResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            try {
+                txn.exec_params(R"(
+                    INSERT INTO event_attendees (event_id, user_id) VALUES ($1, $2)
+                )", request->event_id(), user_opt->id);
+
+                txn.exec_params(R"(
+                    UPDATE events SET attendee_count = attendee_count + 1 WHERE id = $1
+                )", request->event_id());
+
+                response->set_code(200);
+                response->set_message("Joined event successfully");
+            } catch (const pqxx::unique_violation&) {
+                response->set_code(400);
+                response->set_message("Already joined this event");
+            }
+        });
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::SendMessage(::trpc::ServerContextPtr context,
+                                              const ::furbbs::SendMessageRequest* request,
+                                              ::furbbs::SendMessageResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        int64_t message_id = db::Database::Instance().Execute([&](pqxx::work& txn) {
+            auto result = txn.exec_params(R"(
+                INSERT INTO messages (sender_id, receiver_id, content)
+                VALUES ($1, $2, $3)
+                RETURNING id
+            )", user_opt->id, request->receiver_id(), request->content());
+
+            return result[0][0].as<int64_t>();
+        });
+
+        response->set_code(200);
+        response->set_message("Message sent");
+        response->set_message_id(message_id);
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
+::trpc::Status FurBBSServiceImpl::GetMessages(::trpc::ServerContextPtr context,
+                                              const ::furbbs::GetMessagesRequest* request,
+                                              ::furbbs::GetMessagesResponse* response) {
+    try {
+        auto user_opt = auth::CasdoorAuth::Instance().VerifyToken(request->access_token());
+        if (!user_opt) {
+            response->set_code(401);
+            response->set_message("Invalid token");
+            return ::trpc::kSuccStatus;
+        }
+
+        db::Database::Instance().Execute([&](pqxx::work& txn) {
+            int32_t offset = (request->page() - 1) * request->page_size();
+
+            auto count_result = txn.exec_params(R"(
+                SELECT COUNT(*) FROM messages
+                WHERE (sender_id = $1 AND receiver_id = $2)
+                   OR (sender_id = $2 AND receiver_id = $1)
+            )", user_opt->id, request->other_user_id());
+            response->set_total(count_result[0][0].as<int32_t>());
+
+            auto result = txn.exec_params(R"(
+                SELECT m.id, m.sender_id, m.receiver_id, m.content, m.is_read, m.created_at,
+                       s.name, s.display_name, s.avatar,
+                       r.name, r.display_name, r.avatar
+                FROM messages m
+                JOIN users s ON m.sender_id = s.id
+                JOIN users r ON m.receiver_id = r.id
+                WHERE (sender_id = $1 AND receiver_id = $2)
+                   OR (sender_id = $2 AND receiver_id = $1)
+                ORDER BY m.created_at DESC
+                LIMIT $3 OFFSET $4
+            )", user_opt->id, request->other_user_id(), request->page_size(), offset);
+
+            for (const auto& row : result) {
+                auto* msg = response->add_messages();
+                msg->set_id(row[0].as<int64_t>());
+                msg->set_content(row[3].as<std::string>());
+                msg->set_is_read(row[4].as<bool>());
+                msg->set_created_at(row[5].as<int64_t>());
+
+                msg->mutable_sender()->set_id(row[1].as<std::string>());
+                msg->mutable_sender()->set_name(row[6].as<std::string>());
+                msg->mutable_sender()->set_display_name(row[7].as<std::string>());
+                msg->mutable_sender()->set_avatar(row[8].as<std::string>());
+
+                msg->mutable_receiver()->set_id(row[2].as<std::string>());
+                msg->mutable_receiver()->set_name(row[9].as<std::string>());
+                msg->mutable_receiver()->set_display_name(row[10].as<std::string>());
+                msg->mutable_receiver()->set_avatar(row[11].as<std::string>());
+            }
+
+            response->set_code(200);
+            response->set_message("Success");
+        });
+    } catch (const std::exception& e) {
+        response->set_code(500);
+        response->set_message(e.what());
+    }
+    return ::trpc::kSuccStatus;
+}
+
 } // namespace furbbs::service
