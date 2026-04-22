@@ -374,6 +374,26 @@ public:
                             const ::furbbs::GetUserBanRequest* request,
                             ::furbbs::GetUserBanResponse* response) override;
 
+    ::trpc::Status RealNameVerify(::trpc::ServerContextPtr context,
+                                   const ::furbbs::RealNameVerifyRequest* request,
+                                   ::furbbs::RealNameVerifyResponse* response) override;
+
+    ::trpc::Status FaceVerify(::trpc::ServerContextPtr context,
+                              const ::furbbs::FaceVerifyRequest* request,
+                              ::furbbs::FaceVerifyResponse* response) override;
+
+    ::trpc::Status FaceCompare(::trpc::ServerContextPtr context,
+                               const ::furbbs::FaceCompareRequest* request,
+                               ::furbbs::FaceCompareResponse* response) override;
+
+    ::trpc::Status GetVerifyStatus(::trpc::ServerContextPtr context,
+                                    const ::furbbs::GetVerifyStatusRequest* request,
+                                    ::furbbs::GetVerifyStatusResponse* response) override;
+
+    ::trpc::Status QueryVerifyResult(::trpc::ServerContextPtr context,
+                                      const ::furbbs::QueryVerifyResultRequest* request,
+                                      ::furbbs::QueryVerifyResultResponse* response) override;
+
     ::trpc::Status GetModeratorLogs(::trpc::ServerContextPtr context,
                                   const ::furbbs::GetModeratorLogsRequest* request,
                                   ::furbbs::GetModeratorLogsResponse* response) override;

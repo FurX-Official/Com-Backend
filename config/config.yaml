@@ -80,3 +80,12 @@ cache:
 
 scheduler:
   enabled: true
+
+netease_verify:
+  enabled: true
+  secret_id: your_secret_id
+  secret_key: your_secret_key
+  business_id: your_business_id
+  mandatory_verification: false
+  require_face_verify: false
+  cache_verified: true

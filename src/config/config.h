@@ -59,6 +59,16 @@ struct CorsConfig {
     uint32_t max_age;
 };
 
+struct NeteaseVerifyConfig {
+    bool enabled;
+    std::string secret_id;
+    std::string secret_key;
+    std::string business_id;
+    bool mandatory_verification;
+    bool require_face_verify;
+    bool cache_verified;
+};
+
 class Config {
 public:
     static Config& Instance();
@@ -71,6 +81,7 @@ public:
     const LogConfig& GetLogConfig() const { return log_; }
     const SecurityConfig& GetSecurityConfig() const { return security_; }
     const CorsConfig& GetCorsConfig() const { return cors_; }
+    const NeteaseVerifyConfig& GetNeteaseVerifyConfig() const { return netease_verify_; }
 
 private:
     Config() = default;
@@ -82,6 +93,7 @@ private:
     bool ParseLog(const YAML::Node& config);
     bool ParseSecurity(const YAML::Node& config);
     bool ParseCors(const YAML::Node& config);
+    bool ParseNeteaseVerify(const YAML::Node& config);
 
     ServerConfig server_;
     DatabaseConfig database_;
@@ -89,6 +101,7 @@ private:
     LogConfig log_;
     SecurityConfig security_;
     CorsConfig cors_;
+    NeteaseVerifyConfig netease_verify_;
 };
 
 } // namespace furbbs::config

@@ -20,6 +20,7 @@
 #include "../controller/advanced_controller.cc"
 #include "../controller/customization_controller.cc"
 #include "../controller/shop_controller.cc"
+#include "../controller/verification_controller.cc"
 
 namespace furbbs::service {
 
@@ -859,6 +860,38 @@ namespace furbbs::service {
                                                 const ::furbbs::GetUserLevelRequest* request,
                                                 ::furbbs::GetUserLevelResponse* response) {
     return ::furbbs::controller::GetUserLevel(context, request, response);
+}
+
+// ==================== 实名验证相关接口 ====================
+
+::trpc::Status FurBBSServiceImpl::RealNameVerify(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::RealNameVerifyRequest* request,
+                                                   ::furbbs::RealNameVerifyResponse* response) {
+    return ::furbbs::controller::RealNameVerify(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::FaceVerify(::trpc::ServerContextPtr context,
+                                              const ::furbbs::FaceVerifyRequest* request,
+                                              ::furbbs::FaceVerifyResponse* response) {
+    return ::furbbs::controller::FaceVerify(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::FaceCompare(::trpc::ServerContextPtr context,
+                                               const ::furbbs::FaceCompareRequest* request,
+                                               ::furbbs::FaceCompareResponse* response) {
+    return ::furbbs::controller::FaceCompare(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetVerifyStatus(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::GetVerifyStatusRequest* request,
+                                                    ::furbbs::GetVerifyStatusResponse* response) {
+    return ::furbbs::controller::GetVerifyStatus(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::QueryVerifyResult(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::QueryVerifyResultRequest* request,
+                                                      ::furbbs::QueryVerifyResultResponse* response) {
+    return ::furbbs::controller::QueryVerifyResult(context, request, response);
 }
 
 } // namespace furbbs::service

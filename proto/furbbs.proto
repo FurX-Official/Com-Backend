@@ -1025,6 +1025,81 @@ message UpdateGroupCustomSettingsResponse {
     string message = 2;
 }
 
+message RealNameVerifyRequest {
+    string access_token = 1;
+    string name = 2;
+    string id_card_number = 3;
+}
+
+message RealNameVerifyResponse {
+    int32 code = 1;
+    string message = 2;
+    bool success = 3;
+    bool is_verified = 4;
+    bool is_matched = 5;
+    string task_id = 6;
+    int32 confidence_level = 7;
+}
+
+message FaceVerifyRequest {
+    string access_token = 1;
+    string image_url = 2;
+}
+
+message FaceVerifyResponse {
+    int32 code = 1;
+    string message = 2;
+    bool success = 3;
+    bool is_passed = 4;
+    float similarity = 5;
+    string task_id = 6;
+}
+
+message FaceCompareRequest {
+    string access_token = 1;
+    string face_image_url = 2;
+    string id_card_image_url = 3;
+}
+
+message FaceCompareResponse {
+    int32 code = 1;
+    string message = 2;
+    bool success = 3;
+    bool is_passed = 4;
+    float similarity = 5;
+    string task_id = 6;
+    string best_face_url = 7;
+}
+
+message GetVerifyStatusRequest {
+    string access_token = 1;
+    string user_id = 2;
+}
+
+message GetVerifyStatusResponse {
+    int32 code = 1;
+    string message = 2;
+    bool is_verified = 3;
+    bool face_verified = 4;
+    int64 verified_at = 5;
+    string verify_provider = 6;
+    int32 retry_count = 7;
+}
+
+message QueryVerifyResultRequest {
+    string access_token = 1;
+    string task_id = 2;
+}
+
+message QueryVerifyResultResponse {
+    int32 code = 1;
+    string message = 2;
+    bool success = 3;
+    bool is_verified = 4;
+    bool is_matched = 5;
+    int32 confidence_level = 6;
+}
+
 service FurBBSService {{
     rpc GetUser(GetUserRequest) returns (GetUserResponse);
     rpc CreatePost(CreatePostRequest) returns (CreatePostResponse);
@@ -1147,6 +1222,12 @@ service FurBBSService {{
     rpc BanUser(BanUserRequest) returns (BanUserResponse);
     rpc UnbanUser(UnbanUserRequest) returns (UnbanUserResponse);
     rpc GetUserBan(GetUserBanRequest) returns (GetUserBanResponse);
+    
+    rpc RealNameVerify(RealNameVerifyRequest) returns (RealNameVerifyResponse);
+    rpc FaceVerify(FaceVerifyRequest) returns (FaceVerifyResponse);
+    rpc FaceCompare(FaceCompareRequest) returns (FaceCompareResponse);
+    rpc GetVerifyStatus(GetVerifyStatusRequest) returns (GetVerifyStatusResponse);
+    rpc QueryVerifyResult(QueryVerifyResultRequest) returns (QueryVerifyResultResponse);
     
     rpc GetModeratorLogs(GetModeratorLogsRequest) returns (GetModeratorLogsResponse);
     rpc ManagePost(ManagePostRequest) returns (ManagePostResponse);

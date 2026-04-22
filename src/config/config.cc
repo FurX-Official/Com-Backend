@@ -33,6 +33,9 @@ bool Config::Load(const std::string& config_file) {
         if (config["cors"]) {
             ParseCors(config);
         }
+        if (config["netease_verify"]) {
+            ParseNeteaseVerify(config);
+        }
         
         spdlog::info("Config loaded successfully from {}", config_file);
         return true;
@@ -123,6 +126,18 @@ bool Config::ParseCors(const YAML::Node& config) {
     
     cors_.allow_credentials = cors["allow_credentials"].as<bool>(true);
     cors_.max_age = cors["max_age"].as<uint32_t>(86400);
+    return true;
+}
+
+bool Config::ParseNeteaseVerify(const YAML::Node& config) {
+    auto nv = config["netease_verify"];
+    netease_verify_.enabled = nv["enabled"].as<bool>(false);
+    netease_verify_.secret_id = nv["secret_id"].as<std::string>("");
+    netease_verify_.secret_key = nv["secret_key"].as<std::string>("");
+    netease_verify_.business_id = nv["business_id"].as<std::string>("");
+    netease_verify_.mandatory_verification = nv["mandatory_verification"].as<bool>(false);
+    netease_verify_.require_face_verify = nv["require_face_verify"].as<bool>(false);
+    netease_verify_.cache_verified = nv["cache_verified"].as<bool>(true);
     return true;
 }
 
