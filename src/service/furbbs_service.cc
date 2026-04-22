@@ -18,6 +18,8 @@
 #include "../controller/community_enhanced_controller.cc"
 #include "../controller/security_controller.cc"
 #include "../controller/advanced_controller.cc"
+#include "../controller/customization_controller.cc"
+#include "../controller/shop_controller.cc"
 
 namespace furbbs::service {
 
@@ -669,6 +671,194 @@ namespace furbbs::service {
                                                     const ::furbbs::RecordPostShareRequest* request,
                                                     ::furbbs::RecordPostShareResponse* response) {
     return ::furbbs::controller::RecordPostShare(context, request, response);
+}
+
+// ==================== 用户自定义相关接口 ====================
+
+::trpc::Status FurBBSServiceImpl::GetProfileCustom(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::GetProfileCustomRequest* request,
+                                                     ::furbbs::GetProfileCustomResponse* response) {
+    return ::furbbs::controller::GetProfileCustom(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::UpdateProfileCustom(::trpc::ServerContextPtr context,
+                                                        const ::furbbs::UpdateProfileCustomRequest* request,
+                                                        ::furbbs::UpdateProfileCustomResponse* response) {
+    return ::furbbs::controller::UpdateProfileCustom(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetFursonaCardCustom(::trpc::ServerContextPtr context,
+                                                         const ::furbbs::GetFursonaCardCustomRequest* request,
+                                                         ::furbbs::GetFursonaCardCustomResponse* response) {
+    return ::furbbs::controller::GetFursonaCardCustom(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::UpdateFursonaCardCustom(::trpc::ServerContextPtr context,
+                                                            const ::furbbs::UpdateFursonaCardCustomRequest* request,
+                                                            ::furbbs::UpdateFursonaCardCustomResponse* response) {
+    return ::furbbs::controller::UpdateFursonaCardCustom(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetNotificationSettings(::trpc::ServerContextPtr context,
+                                                            const ::furbbs::GetNotificationSettingsRequest* request,
+                                                            ::furbbs::GetNotificationSettingsResponse* response) {
+    return ::furbbs::controller::GetNotificationSettings(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::UpdateNotificationSettings(::trpc::ServerContextPtr context,
+                                                               const ::furbbs::UpdateNotificationSettingsRequest* request,
+                                                               ::furbbs::UpdateNotificationSettingsResponse* response) {
+    return ::furbbs::controller::UpdateNotificationSettings(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetFeedSettings(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::GetFeedSettingsRequest* request,
+                                                   ::furbbs::GetFeedSettingsResponse* response) {
+    return ::furbbs::controller::GetFeedSettings(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::UpdateFeedSettings(::trpc::ServerContextPtr context,
+                                                      const ::furbbs::UpdateFeedSettingsRequest* request,
+                                                      ::furbbs::UpdateFeedSettingsResponse* response) {
+    return ::furbbs::controller::UpdateFeedSettings(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::CreateTheme(::trpc::ServerContextPtr context,
+                                               const ::furbbs::CreateThemeRequest* request,
+                                               ::furbbs::CreateThemeResponse* response) {
+    return ::furbbs::controller::CreateTheme(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetThemeList(::trpc::ServerContextPtr context,
+                                                const ::furbbs::GetThemeListRequest* request,
+                                                ::furbbs::GetThemeListResponse* response) {
+    return ::furbbs::controller::GetThemeList(context, request, response);
+}
+
+// ==================== 消息与私信相关接口 ====================
+
+::trpc::Status FurBBSServiceImpl::SendMessage(::trpc::ServerContextPtr context,
+                                               const ::furbbs::SendMessageRequest* request,
+                                               ::furbbs::SendMessageResponse* response) {
+    return ::furbbs::controller::SendMessage(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetMessages(::trpc::ServerContextPtr context,
+                                               const ::furbbs::GetMessagesRequest* request,
+                                               ::furbbs::GetMessagesResponse* response) {
+    return ::furbbs::controller::GetMessages(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetMessageConversations(::trpc::ServerContextPtr context,
+                                                           const ::furbbs::GetMessageConversationsRequest* request,
+                                                           ::furbbs::GetMessageConversationsResponse* response) {
+    return ::furbbs::controller::GetMessageConversations(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::MarkMessageRead(::trpc::ServerContextPtr context,
+                                                   const ::furbbs::MarkMessageReadRequest* request,
+                                                   ::furbbs::MarkMessageReadResponse* response) {
+    return ::furbbs::controller::MarkMessageRead(context, request, response);
+}
+
+// ==================== 管理员与权限相关接口 ====================
+
+::trpc::Status FurBBSServiceImpl::GrantPermission(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::GrantPermissionRequest* request,
+                                                    ::furbbs::GrantPermissionResponse* response) {
+    return ::furbbs::controller::GrantPermission(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::RevokePermission(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::RevokePermissionRequest* request,
+                                                     ::furbbs::RevokePermissionResponse* response) {
+    return ::furbbs::controller::RevokePermission(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::ListUserPermissions(::trpc::ServerContextPtr context,
+                                                        const ::furbbs::ListUserPermissionsRequest* request,
+                                                        ::furbbs::ListUserPermissionsResponse* response) {
+    return ::furbbs::controller::ListUserPermissions(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::ModeratePost(::trpc::ServerContextPtr context,
+                                                 const ::furbbs::ModeratePostRequest* request,
+                                                 ::furbbs::ModeratePostResponse* response) {
+    return ::furbbs::controller::ModeratePost(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::BanUser(::trpc::ServerContextPtr context,
+                                           const ::furbbs::BanUserRequest* request,
+                                           ::furbbs::BanUserResponse* response) {
+    return ::furbbs::controller::BanUser(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::UnbanUser(::trpc::ServerContextPtr context,
+                                             const ::furbbs::UnbanUserRequest* request,
+                                             ::furbbs::UnbanUserResponse* response) {
+    return ::furbbs::controller::UnbanUser(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserBan(::trpc::ServerContextPtr context,
+                                              const ::furbbs::GetUserBanRequest* request,
+                                              ::furbbs::GetUserBanResponse* response) {
+    return ::furbbs::controller::GetUserBan(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetModeratorLogs(::trpc::ServerContextPtr context,
+                                                    const ::furbbs::GetModeratorLogsRequest* request,
+                                                    ::furbbs::GetModeratorLogsResponse* response) {
+    return ::furbbs::controller::GetModeratorLogs(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::CreateReport(::trpc::ServerContextPtr context,
+                                                const ::furbbs::CreateReportRequest* request,
+                                                ::furbbs::CreateReportResponse* response) {
+    return ::furbbs::controller::CreateReport(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetReports(::trpc::ServerContextPtr context,
+                                              const ::furbbs::GetReportsRequest* request,
+                                              ::furbbs::GetReportsResponse* response) {
+    return ::furbbs::controller::GetReports(context, request, response);
+}
+
+// ==================== 商店与经济相关接口 ====================
+
+::trpc::Status FurBBSServiceImpl::GetShopItems(::trpc::ServerContextPtr context,
+                                                  const ::furbbs::GetShopItemsRequest* request,
+                                                  ::furbbs::GetShopItemsResponse* response) {
+    return ::furbbs::controller::GetShopItems(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::PurchaseItem(::trpc::ServerContextPtr context,
+                                               const ::furbbs::PurchaseItemRequest* request,
+                                               ::furbbs::PurchaseItemResponse* response) {
+    return ::furbbs::controller::PurchaseItem(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserInventory(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::GetUserInventoryRequest* request,
+                                                     ::furbbs::GetUserInventoryResponse* response) {
+    return ::furbbs::controller::GetUserInventory(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::DailyCheckIn(::trpc::ServerContextPtr context,
+                                            const ::furbbs::DailyCheckInRequest* request,
+                                            ::furbbs::DailyCheckInResponse* response) {
+    return ::furbbs::controller::DailyCheckIn(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetCheckInStatus(::trpc::ServerContextPtr context,
+                                                     const ::furbbs::GetCheckInStatusRequest* request,
+                                                     ::furbbs::GetCheckInStatusResponse* response) {
+    return ::furbbs::controller::GetCheckInStatus(context, request, response);
+}
+
+::trpc::Status FurBBSServiceImpl::GetUserLevel(::trpc::ServerContextPtr context,
+                                                const ::furbbs::GetUserLevelRequest* request,
+                                                ::furbbs::GetUserLevelResponse* response) {
+    return ::furbbs::controller::GetUserLevel(context, request, response);
 }
 
 } // namespace furbbs::service
